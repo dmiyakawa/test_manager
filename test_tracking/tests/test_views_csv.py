@@ -46,6 +46,64 @@ class TestCSVViews:
         response = client.get(url)
         assert response.status_code == 302
 
+    def test_project_csv_export(self, client, admin_user):
+        client.login(username="admin", password="adminpass")
+
+        # テストデータを作成
+        project = Project.objects.create(
+            id=1, name="Test Project", description="Test Description"
+        )
+        suite = TestSuite.objects.create(
+            id=1,
+            project=project,
+            name="Test Suite",
+            description="Test Suite Description"
+        )
+        case = TestCase.objects.create(
+            id=1,
+            suite=suite,
+            title="Test Case",
+            description="Test Description",
+            status="ACTIVE",
+            priority="HIGH"
+        )
+        step = TestStep.objects.create(
+            id=1,
+            test_case=case,
+            order=1,
+            description="Test Step",
+            expected_result="Expected Result"
+        )
+
+        # 別のプロジェクトのデータを作成（エクスポートされないことを確認するため）
+        other_project = Project.objects.create(
+            id=2, name="Other Project", description="Other Description"
+        )
+        other_suite = TestSuite.objects.create(
+            id=2,
+            project=other_project,
+            name="Other Suite",
+            description="Other Suite Description"
+        )
+
+        # プロジェクト単位のエクスポート
+        url = reverse("project_csv_export", kwargs={"project_id": project.id})
+        response = client.get(url)
+        assert response.status_code == 200
+        assert response["Content-Type"] == "text/csv"
+        content = response.content.decode("utf-8")
+
+        # プロジェクトのデータが含まれていることを確認
+        assert "Test Project" in content
+        assert "Test Suite" in content
+        assert "Test Case" in content
+        assert "Test Step" in content
+        assert "Expected Result" in content
+
+        # 別のプロジェクトのデータが含まれていないことを確認
+        assert "Other Project" not in content
+        assert "Other Suite" not in content
+
     def test_csv_export(self, client, admin_user):
         client.login(username="admin", password="adminpass")
 

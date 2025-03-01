@@ -17,7 +17,9 @@
     <div class="col-md-6 mb-4">
         <div class="card h-100">
             <div class="card-body">
-                <h5 class="card-title">{{ project.name }}</h5>
+                <h5 class="card-title">
+                    <a href="{% url 'project_detail' project.pk %}" class="text-decoration-none">{{ project.name }}</a>
+                </h5>
                 <p class="card-text">{{ project.description|truncatewords:30 }}</p>
                 <div class="mb-3">
                     <small class="text-muted">
@@ -39,14 +41,11 @@
                         <span class="badge bg-info">実行者</span>
                         {% endif %}
                     </div>
-                    <div class="btn-group">
-                        <a href="{% url 'project_detail' project.pk %}" class="btn btn-primary btn-sm">詳細</a>
-                        {% if "manage_project" in project_perms %}
-                        <a href="{% url 'project_update' project.pk %}" class="btn btn-secondary btn-sm">
-                            <i class="bi bi-gear-fill"></i> 設定
-                        </a>
-                        {% endif %}
-                    </div>
+                    {% if "manage_project" in project_perms %}
+                    <a href="{% url 'project_update' project.pk %}" class="btn btn-secondary btn-sm">
+                        <i class="bi bi-gear-fill"></i> 設定
+                    </a>
+                    {% endif %}
                 </div>
             </div>
         </div>

@@ -5,7 +5,7 @@
     <h1>テスト実行</h1>
     <h4 class="text-muted">{{ test_run.name }}</h4>
     <p>
-        スイート: {{ test_run.suite.name }} |
+        スイート: {{ current_case.suite.name }} |
         実行者: {{ test_run.executed_by }} |
         環境: {{ test_run.environment }}
     </p>
@@ -71,7 +71,7 @@
             </div>
 
             <div class="d-flex justify-content-between">
-                <a href="{% url 'suite_detail' test_run.suite.id %}" class="btn btn-secondary" onclick="return confirm('テスト実行を中断してもよろしいですか？')">中断</a>
+                <a href="{% url 'suite_detail' current_case.suite.id %}" class="btn btn-secondary" onclick="return confirm('テスト実行を中断してもよろしいですか？')">中断</a>
                 <button type="submit" class="btn btn-primary">次へ</button>
             </div>
         </form>
@@ -83,7 +83,7 @@
         <h5 class="card-title">テスト実行完了</h5>
         <p>すべてのテストケースの実行が完了しました。</p>
         <div class="d-flex justify-content-between">
-            <a href="{% url 'suite_detail' test_run.suite.id %}" class="btn btn-secondary">スイート詳細に戻る</a>
+            <a href="{% url 'project_detail' test_run.project.id %}" class="btn btn-secondary">プロジェクトに戻る</a>
             <a href="{% url 'test_run_detail' test_run.id %}" class="btn btn-primary">実行結果を確認</a>
         </div>
     </div>

@@ -7,6 +7,11 @@ urlpatterns = [
         "csv/export/", views_csv.CSVExportView.as_view(), name="csv_export"
     ),
     path(
+        "project/<int:project_id>/csv/export/",
+        views_csv.ProjectCSVExportView.as_view(),
+        name="project_csv_export"
+    ),
+    path(
         "csv/import/", views_csv.CSVImportView.as_view(), name="csv_import"
     ),
     path("csv/", views.CSVManagementView.as_view(), name="csv_management"),

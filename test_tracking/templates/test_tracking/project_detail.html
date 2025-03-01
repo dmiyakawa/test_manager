@@ -6,11 +6,16 @@
         <h1>{{ project.name }}</h1>
         {% load guardian_tags %}
         {% get_obj_perms user for project as "project_perms" %}
-        {% if "manage_project" in project_perms %}
-        <a href="{% url 'project_update' project.pk %}" class="btn btn-secondary">
-            <i class="bi bi-gear-fill"></i> プロジェクト設定
-        </a>
-        {% endif %}
+        <div class="btn-group">
+            <a href="{% url 'project_csv_export' project.pk %}" class="btn btn-success">
+                <i class="bi bi-file-earmark-text"></i> CSVエクスポート
+            </a>
+            {% if "manage_project" in project_perms %}
+            <a href="{% url 'project_update' project.pk %}" class="btn btn-secondary">
+                <i class="bi bi-gear-fill"></i> プロジェクト設定
+            </a>
+            {% endif %}
+        </div>
     </div>
     <p class="text-muted">
         作成日: {{ project.created_at|date:"Y/m/d" }} |

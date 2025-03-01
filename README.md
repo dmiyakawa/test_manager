@@ -1,6 +1,8 @@
 # Test Management Application
 
-Djangoベースのテスト管理アプリケーション。テストケースの作成、実行、結果の追跡を効率的に行うことができます。
+Djangoベースのテスト管理アプリケーション。流行りのえーあいで9割くらいやりちらかしてます。
+
+![画面イメージ](misc/screen1.png)
 
 ## 機能
 
@@ -25,11 +27,10 @@ Djangoベースのテスト管理アプリケーション。テストケース�
 ## セットアップ
 
 1. 仮想環境の作成とアクティベート
+
 ```bash
 python -m venv venv
-source venv/bin/activate  # Linux/macOS
-# または
-.\venv\Scripts\activate  # Windows
+source venv/bin/activate
 ```
 
 2. 依存パッケージのインストール

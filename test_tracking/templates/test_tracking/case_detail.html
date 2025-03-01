@@ -138,12 +138,21 @@
                 <tbody>
                     {% for execution in executions %}
                     <tr>
-                        <td>{{ execution.executed_at|date:"Y/m/d H:i" }}</td>
+                        <td>
+                            <a href="{% url 'test_run_detail' execution.test_run.pk %}">{{ execution.test_run.name }}</a><br>
+                            <small class="text-muted">{{ execution.executed_at|date:"Y/m/d H:i" }}</small>
+                        </td>
                         <td>{{ execution.executed_by }}</td>
                         <td>
-                            <span class="badge {% if execution.result == 'PASS' %}bg-success{% elif execution.result == 'FAIL' %}bg-danger{% elif execution.result == 'BLOCKED' %}bg-warning{% else %}bg-secondary{% endif %}">
-                                {{ execution.get_result_display }}
-                            </span>
+                            {% if execution.result == 'PASS' %}
+                            <span class="badge bg-success">PASS</span>
+                            {% elif execution.result == 'FAIL' %}
+                            <span class="badge bg-danger">FAIL</span>
+                            {% elif execution.result == 'BLOCKED' %}
+                            <span class="badge bg-warning">BLOCKED</span>
+                            {% else %}
+                            <span class="badge bg-secondary">SKIPPED</span>
+                            {% endif %}
                         </td>
                         <td>{{ execution.environment }}</td>
                         <td>{{ execution.actual_result|linebreaks }}</td>

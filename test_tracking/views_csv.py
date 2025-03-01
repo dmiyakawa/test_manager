@@ -1,11 +1,92 @@
 import csv
 import json
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.db import transaction
 from .models import Project, TestSuite, TestCase, TestStep
+
+
+class ProjectCSVExportView(View):
+    @method_decorator(login_required)
+    def get(self, request, project_id, *args, **kwargs):
+        project = get_object_or_404(Project, pk=project_id)
+        response = HttpResponse(
+            content_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="test_data_{project.name}.csv"'},
+        )
+
+        writer = csv.writer(response)
+        writer.writerow([
+            "type",
+            "id",
+            "parent_id",
+            "name",
+            "description",
+            "prerequisites",
+            "status",
+            "priority",
+            "expected_result"
+        ])
+
+        # プロジェクトのエクスポート
+        writer.writerow([
+            "project",
+            project.id,
+            "",  # 親ID（プロジェクトの場合は空）
+            project.name,
+            project.description,
+            "",  # prerequisites
+            "",  # status
+            "",  # priority
+            ""   # expected_result
+        ])
+
+        # プロジェクトに属するテストスイートのエクスポート
+        for suite in project.test_suites.all():
+            writer.writerow([
+                "suite",
+                suite.id,
+                project.id,  # 親ID（プロジェクトID）
+                suite.name,
+                suite.description,
+                "",  # prerequisites
+                "",  # status
+                "",  # priority
+                ""   # expected_result
+            ])
+
+            # スイートに属するテストケースのエクスポート
+            for case in suite.test_cases.all():
+                writer.writerow([
+                    "case",
+                    case.id,
+                    suite.id,  # 親ID（スイートID）
+                    case.title,
+                    case.description,
+                    case.prerequisites,
+                    case.status,
+                    case.priority,
+                    ""  # expected_result
+                ])
+
+                # テストケースに属するステップのエクスポート
+                for step in case.steps.all():
+                    writer.writerow([
+                        "step",
+                        step.id,
+                        case.id,  # 親ID（ケースID）
+                        str(step.order),  # orderをname列として使用
+                        step.description,
+                        "",  # prerequisites
+                        "",  # status
+                        "",  # priority
+                        step.expected_result
+                    ])
+
+        return response
 
 
 class CSVExportView(View):
