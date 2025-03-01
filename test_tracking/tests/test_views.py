@@ -27,6 +27,10 @@ class TestProjectViews:
         response = client.get(url)
         assert response.status_code == 200
         assert "Test Project" in str(response.content)
+        # 「テスト実行」という文字列が含まれていないことを確認
+        assert "テスト実行" not in str(response.content)
+        # 「テストラン」という文字列が含まれていないことを確認
+        assert "テストラン" not in str(response.content)
 
     def test_project_create_view(self, client, user):
         client.login(username="testuser", password="testpass")
@@ -268,6 +272,25 @@ class TestIterationViews:
         response = client.post(url, data)
         assert response.status_code == 302
         assert TestExecution.objects.filter(test_iteration=test_iteration, test_case=case).exists()
+
+
+@pytest.mark.django_db
+class TestIterationListView:
+    @pytest.fixture
+    def user(self):
+        return User.objects.create_superuser(
+            username="admin", email="admin@example.com", password="adminpass"
+        )
+
+    def test_iteration_list_view(self, client, user):
+        client.login(username="admin", password="adminpass")
+        url = reverse("test_iteration_list")
+        response = client.get(url)
+        assert response.status_code == 200
+        # 「テスト実行」という文字列が含まれていないことを確認
+        assert "テスト実行" not in str(response.content)
+        # 「テストラン」という文字列が含まれていないことを確認
+        assert "テストラン" not in str(response.content)
 
 
 @pytest.mark.django_db

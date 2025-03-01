@@ -65,7 +65,7 @@
 
 <div class="mb-4">
     <div class="d-flex justify-content-between align-items-center">
-        <h2>テスト実行一覧</h2>
+        <h2>テストイテレーション一覧</h2>
     </div>
 </div>
 
@@ -76,7 +76,7 @@
                 <thead>
                     <tr>
                         <th>プロジェクト</th>
-                        <th>テスト実行</th>
+                        <th>テストイテレーション</th>
                         <th>進捗</th>
                         <th>状態</th>
                         <th>開始日時</th>
@@ -84,17 +84,17 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for test_run in test_runs %}
+                    {% for test_iteration in test_iterations %}
                     <tr>
                         <td>
-                            <a href="{% url 'project_detail' test_run.project.id %}">{{ test_run.project.name }}</a>
+                            <a href="{% url 'project_detail' test_iteration.project.id %}">{{ test_iteration.project.name }}</a>
                         </td>
                         <td>
-                            <a href="{% url 'test_run_detail' test_run.id %}">{{ test_run.name }}</a>
+                            <a href="{% url 'test_iteration_detail' test_iteration.id %}">{{ test_iteration.name }}</a>
                         </td>
                         <td>
-                            {% with execution_count=test_run.executions.count %}
-                            {% with total_count=test_run.get_available_cases.count %}
+                            {% with execution_count=test_iteration.executions.count %}
+                            {% with total_count=test_iteration.get_available_cases.count %}
                             {% if total_count > 0 %}
                             {{ execution_count }}/{{ total_count }}
                             ({{ execution_count|multiply:100|divide:total_count }}%)
@@ -105,14 +105,14 @@
                             {% endwith %}
                         </td>
                         <td>
-                            <span class="badge {% if test_run.completed_at %}bg-success{% else %}bg-warning{% endif %}">
-                                {{ test_run.completed_at|yesno:"完了,実行中" }}
+                            <span class="badge {% if test_iteration.completed_at %}bg-success{% else %}bg-warning{% endif %}">
+                                {{ test_iteration.completed_at|yesno:"完了,実行中" }}
                             </span>
                         </td>
-                        <td>{{ test_run.started_at|date:"Y/m/d H:i" }}</td>
+                        <td>{{ test_iteration.started_at|date:"Y/m/d H:i" }}</td>
                         <td>
-                            {% if not test_run.completed_at %}
-                            <a href="{% url 'test_run_execute' test_run.id %}" class="btn btn-sm btn-outline-primary">
+                            {% if not test_iteration.completed_at %}
+                            <a href="{% url 'test_iteration_execute' test_iteration.id %}" class="btn btn-sm btn-outline-primary">
                                 <i class="bi bi-play-fill"></i> 実行
                             </a>
                             {% endif %}
@@ -120,7 +120,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center">テスト実行がありません。</td>
+                        <td colspan="6" class="text-center">テストイテレーションがありません。</td>
                     </tr>
                     {% endfor %}
                 </tbody>
