@@ -2,12 +2,12 @@ import pytest
 from django.utils import timezone
 from test_tracking.models import Project, TestSuite, TestCase, TestStep
 
+
 @pytest.mark.django_db
 class TestProject:
     def test_create_project(self):
         project = Project.objects.create(
-            name="テストプロジェクト",
-            description="テスト用のプロジェクトです"
+            name="テストプロジェクト", description="テスト用のプロジェクトです"
         )
         assert project.name == "テストプロジェクト"
         assert project.description == "テスト用のプロジェクトです"
@@ -17,6 +17,7 @@ class TestProject:
     def test_project_str(self):
         project = Project.objects.create(name="テストプロジェクト")
         assert str(project) == "テストプロジェクト"
+
 
 @pytest.mark.django_db
 class TestTestSuite:
@@ -28,7 +29,7 @@ class TestTestSuite:
         suite = TestSuite.objects.create(
             project=project,
             name="テストスイート1",
-            description="テスト用のスイートです"
+            description="テスト用のスイートです",
         )
         assert suite.name == "テストスイート1"
         assert suite.description == "テスト用のスイートです"
@@ -37,21 +38,16 @@ class TestTestSuite:
         assert suite.updated_at is not None
 
     def test_suite_str(self, project):
-        suite = TestSuite.objects.create(
-            project=project,
-            name="テストスイート1"
-        )
+        suite = TestSuite.objects.create(project=project, name="テストスイート1")
         assert str(suite) == "テストスイート1"
+
 
 @pytest.mark.django_db
 class TestTestCase:
     @pytest.fixture
     def suite(self):
         project = Project.objects.create(name="テストプロジェクト")
-        return TestSuite.objects.create(
-            project=project,
-            name="テストスイート1"
-        )
+        return TestSuite.objects.create(project=project, name="テストスイート1")
 
     def test_create_case(self, suite):
         case = TestCase.objects.create(
@@ -60,7 +56,7 @@ class TestTestCase:
             description="ログイン機能のテスト",
             prerequisites="テストユーザーが作成されていること",
             status="ACTIVE",
-            priority="HIGH"
+            priority="HIGH",
         )
         assert case.title == "ログインテスト"
         assert case.description == "ログイン機能のテスト"
@@ -72,32 +68,24 @@ class TestTestCase:
         assert case.updated_at is not None
 
     def test_case_str(self, suite):
-        case = TestCase.objects.create(
-            suite=suite,
-            title="ログインテスト"
-        )
+        case = TestCase.objects.create(suite=suite, title="ログインテスト")
         assert str(case) == "ログインテスト"
+
 
 @pytest.mark.django_db
 class TestTestStep:
     @pytest.fixture
     def case(self):
         project = Project.objects.create(name="テストプロジェクト")
-        suite = TestSuite.objects.create(
-            project=project,
-            name="テストスイート1"
-        )
-        return TestCase.objects.create(
-            suite=suite,
-            title="ログインテスト"
-        )
+        suite = TestSuite.objects.create(project=project, name="テストスイート1")
+        return TestCase.objects.create(suite=suite, title="ログインテスト")
 
     def test_create_step(self, case):
         step = TestStep.objects.create(
             test_case=case,
             order=1,
             description="ログインボタンをクリック",
-            expected_result="ログインフォームが表示される"
+            expected_result="ログインフォームが表示される",
         )
         assert step.order == 1
         assert step.description == "ログインボタンをクリック"
@@ -108,8 +96,6 @@ class TestTestStep:
 
     def test_step_str(self, case):
         step = TestStep.objects.create(
-            test_case=case,
-            order=1,
-            description="ログインボタンをクリック"
+            test_case=case, order=1, description="ログインボタンをクリック"
         )
         assert str(step) == "ステップ 1: ログインボタンをクリック"

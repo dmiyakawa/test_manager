@@ -6,12 +6,18 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('test_tracking', '0001_initial'),
+        ("test_tracking", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='project',
-            options={'permissions': [('manage_project', 'Can manage project settings and members'), ('edit_tests', 'Can create and edit test cases'), ('execute_tests', 'Can execute tests and record results')]},
+            name="project",
+            options={
+                "permissions": [
+                    ("manage_project", "Can manage project settings and members"),
+                    ("edit_tests", "Can create and edit test cases"),
+                    ("execute_tests", "Can execute tests and record results"),
+                ]
+            },
         ),
     ]

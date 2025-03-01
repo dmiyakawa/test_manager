@@ -3,6 +3,7 @@ from django.db.models import QuerySet
 
 register = template.Library()
 
+
 @register.filter
 def multiply(value, arg):
     try:
@@ -10,12 +11,14 @@ def multiply(value, arg):
     except (ValueError, TypeError):
         return 0
 
+
 @register.filter
 def divide(value, arg):
     try:
         return int(float(value) / float(arg))
     except (ValueError, TypeError, ZeroDivisionError):
         return 0
+
 
 @register.filter
 def filter_by(queryset, expr):
@@ -27,7 +30,7 @@ def filter_by(queryset, expr):
         return []
 
     try:
-        key, value = expr.split('=')
+        key, value = expr.split("=")
         value = value.strip("'\"")
         return queryset.filter(**{key: value})
     except (ValueError, TypeError):
