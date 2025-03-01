@@ -1,9 +1,9 @@
 from django.contrib import admin
-from .models import Project, TestSuite, TestCase, TestRun, TestExecution
+from .models import Project, TestSuite, TestCase, TestIteration, TestExecution
 
 
-@admin.register(TestRun)
-class TestRunAdmin(admin.ModelAdmin):
+@admin.register(TestIteration)
+class TestIterationAdmin(admin.ModelAdmin):
     list_display = (
         "name",
         "project",

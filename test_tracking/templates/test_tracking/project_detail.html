@@ -34,8 +34,8 @@
         <h2 class="mb-0">テスト構成</h2>
             <div class="btn-group">
                 {% if "execute_tests" in project_perms %}
-                <a href="{% url 'test_run_create' project.pk %}" class="btn btn-success">
-                    <i class="bi bi-play-fill"></i> 一括テスト実行
+                <a href="{% url 'test_iteration_create' project.pk %}" class="btn btn-success">
+                    <i class="bi bi-play-fill"></i> テストイテレーションを開始する
                 </a>
                 {% endif %}
                 {% if "edit_tests" in project_perms %}
@@ -117,31 +117,31 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title h5 mb-0">最近のテスト実行</h2>
+                <h2 class="card-title h5 mb-0">最近のテストイテレーション</h2>
             </div>
             <div class="card-body">
                 <div class="list-group list-group-flush">
-                    {% for run in project.test_runs.all|slice:":5" %}
+                    {% for iteration in project.test_iterations.all|slice:":5" %}
                     <div class="list-group-item">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <h6 class="mb-1">
-                                    <a href="{% url 'test_run_detail' run.pk %}">{{ run.name }}</a>
+                                    <a href="{% url 'test_iteration_detail' iteration.pk %}">{{ iteration.name }}</a>
                                 </h6>
                                 <small class="text-muted">
-                                    実行者: {{ run.executed_by }} |
-                                    環境: {{ run.environment }} |
-                                    開始: {{ run.started_at|date:"Y/m/d H:i" }}
+                                    実行者: {{ iteration.executed_by }} |
+                                    環境: {{ iteration.environment }} |
+                                    開始: {{ iteration.started_at|date:"Y/m/d H:i" }}
                                 </small>
                             </div>
-                            <span class="badge {% if run.completed_at %}bg-success{% else %}bg-warning{% endif %}">
-                                {{ run.completed_at|yesno:"完了,実行中" }}
+                            <span class="badge {% if iteration.completed_at %}bg-success{% else %}bg-warning{% endif %}">
+                                {{ iteration.completed_at|yesno:"完了,実行中" }}
                             </span>
                         </div>
                     </div>
                     {% empty %}
                     <div class="text-center text-muted py-3">
-                        テスト実行履歴がありません
+                        テストイテレーション履歴がありません
                     </div>
                     {% endfor %}
                 </div>

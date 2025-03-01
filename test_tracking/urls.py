@@ -67,17 +67,23 @@ urlpatterns = [
         name="execution_create",
     ),
     path(
-        "project/<int:project_pk>/test-run/create/",
-        views.TestRunCreateView.as_view(),
-        name="test_run_create",
+        "project/<int:project_pk>/test-iteration/create/",
+        views.TestIterationCreateView.as_view(),
+        name="test_iteration_create",
     ),
     path(
-        "test-run/<int:pk>/execute/",
-        views.TestRunExecuteView.as_view(),
-        name="test_run_execute",
+        "test-iteration/<int:pk>/execute/",
+        views.TestIterationExecuteView.as_view(),
+        name="test_iteration_execute",
     ),
     path(
-        "test-run/<int:pk>/", views.TestRunDetailView.as_view(), name="test_run_detail"
+        "test-iteration/<int:pk>/",
+        views.TestIterationDetailView.as_view(),
+        name="test_iteration_detail"
     ),
-    path("test-runs/", views.TestRunListView.as_view(), name="test_run_list"),
+    path(
+        "test-iterations/",
+        views.TestIterationListView.as_view(),
+        name="test_iteration_list"
+    ),
 ]

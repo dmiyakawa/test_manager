@@ -2,14 +2,14 @@
 
 {% block content %}
 <div class="mb-4">
-    <h1>テスト実行</h1>
-    <h4 class="text-muted">{{ test_run.name }}</h4>
+    <h1>テストイテレーション</h1>
+    <h4 class="text-muted">{{ test_iteration.name }}</h4>
     <p>
         {% if current_case %}
         スイート: {{ current_case.suite.name }} |
         {% endif %}
-        実行者: {{ test_run.executed_by }} |
-        環境: {{ test_run.environment }}
+        実行者: {{ test_iteration.executed_by }} |
+        環境: {{ test_iteration.environment }}
     </p>
 </div>
 
@@ -88,7 +88,7 @@
 
             <div class="d-flex justify-content-between">
                 {% if current_case %}
-                <a href="{% url 'project_detail' test_run.project.id %}" class="btn btn-secondary" onclick="return confirm('テスト実行を中断してもよろしいですか？')">中断</a>
+                <a href="{% url 'project_detail' test_iteration.project.id %}" class="btn btn-secondary" onclick="return confirm('テストイテレーションを中断してもよろしいですか？')">中断</a>
                 {% endif %}
                 <button type="submit" class="btn btn-primary">次へ</button>
             </div>
@@ -98,11 +98,11 @@
 {% else %}
 <div class="card">
     <div class="card-body">
-        <h5 class="card-title">テスト実行完了</h5>
+        <h5 class="card-title">テストイテレーション完了</h5>
         <p>すべてのテストケースの実行が完了しました。</p>
         <div class="d-flex justify-content-between">
-            <a href="{% url 'project_detail' test_run.project.id %}" class="btn btn-secondary">プロジェクトに戻る</a>
-            <a href="{% url 'test_run_detail' test_run.id %}" class="btn btn-primary">実行結果を確認</a>
+            <a href="{% url 'project_detail' test_iteration.project.id %}" class="btn btn-secondary">プロジェクトに戻る</a>
+            <a href="{% url 'test_iteration_detail' test_iteration.id %}" class="btn btn-primary">実行結果を確認</a>
         </div>
     </div>
 </div>
@@ -124,7 +124,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for tup in test_run.get_available_cases_and_executions %}
+                    {% for tup in test_iteration.get_available_cases_and_executions %}
                     {% with tup.0 as case %}
                     {% with tup.1 as execution %}
                     <tr>
@@ -144,7 +144,7 @@
                         <td>{{ execution.notes|default:"-"|truncatewords:10 }}</td>
                         <td>
                             {% if not execution or execution.result == 'SKIPPED' %}
-                            <form method="post" action="{% url 'test_run_execute' test_run.id %}" class="d-inline">
+                            <form method="post" action="{% url 'test_iteration_execute' test_iteration.id %}" class="d-inline">
                                 {% csrf_token %}
                                 <input type="hidden" name="test_case_id" value="{{ case.id }}">
                                 <button type="submit" class="btn btn-sm btn-outline-primary">

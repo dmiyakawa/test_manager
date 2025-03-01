@@ -2,7 +2,7 @@ import pytest
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from guardian.shortcuts import assign_perm
-from test_tracking.models import Project, TestSuite, TestCase, TestStep, TestRun, TestExecution
+from test_tracking.models import Project, TestSuite, TestCase, TestStep, TestIteration, TestExecution
 
 User = get_user_model()
 
@@ -158,14 +158,14 @@ class TestCaseViews:
     def test_case_detail_view_with_executions(self, client, user, case):
         client.login(username="testuser", password="testpass")
         # テスト実行を作成
-        test_run = TestRun.objects.create(
+        test_iteration = TestIteration.objects.create(
             project=case.suite.project,
-            name="Test Run",
+            name="Test Iteration",
             executed_by=user,
             environment="Test Environment"
         )
         execution = TestExecution.objects.create(
-            test_run=test_run,
+            test_iteration=test_iteration,
             test_case=case,
             executed_by=user,
             environment="Test Environment",
@@ -176,12 +176,12 @@ class TestCaseViews:
         url = reverse("case_detail", kwargs={"pk": case.pk})
         response = client.get(url)
         assert response.status_code == 200
-        assert "Test Run" in str(response.content)
+        assert "Test Iteration" in str(response.content)
         assert "PASS" in str(response.content)
 
 
 @pytest.mark.django_db
-class TestRunViews:
+class TestIterationViews:
     @pytest.fixture
     def user(self):
         return User.objects.create_user(
@@ -214,34 +214,34 @@ class TestRunViews:
         )
 
     @pytest.fixture
-    def test_run(self, project, user, suite):
-        test_run = TestRun.objects.create(
+    def test_iteration(self, project, user, suite):
+        test_iteration = TestIteration.objects.create(
             project=project,
-            name="Test Run",
+            name="Test Iteration",
             executed_by=user,
             environment="Test Environment"
         )
-        test_run.available_suites.add(suite)
-        return test_run
+        test_iteration.available_suites.add(suite)
+        return test_iteration
 
-    def test_test_run_execute_view_get(self, client, user, test_run, case):
+    def test_test_iteration_execute_view_get(self, client, user, test_iteration, case):
         client.login(username="testuser", password="testpass")
         # セッションにテストケースを設定
         session = client.session
         session["selected_cases"] = [str(case.pk)]
         session.save()
 
-        url = reverse("test_run_execute", kwargs={"pk": test_run.pk})
+        url = reverse("test_iteration_execute", kwargs={"pk": test_iteration.pk})
         response = client.get(url)
         assert response.status_code == 200
         assert "Test Case" in str(response.content)
         assert "0/1" in str(response.content)  # 進捗表示（完了数/全体数）
 
-    def test_test_run_execute_view_get_completed(self, client, user, test_run, case):
+    def test_test_iteration_execute_view_get_completed(self, client, user, test_iteration, case):
         client.login(username="testuser", password="testpass")
         # すべてのテストケースを実行済みに
         TestExecution.objects.create(
-            test_run=test_run,
+            test_iteration=test_iteration,
             test_case=case,
             executed_by=user,
             environment="Test Environment",
@@ -251,14 +251,14 @@ class TestRunViews:
         session["selected_cases"] = [str(case.pk)]
         session.save()
 
-        url = reverse("test_run_execute", kwargs={"pk": test_run.pk})
+        url = reverse("test_iteration_execute", kwargs={"pk": test_iteration.pk})
         response = client.get(url)
         assert response.status_code == 302
-        assert response.url == reverse("test_run_detail", kwargs={"pk": test_run.pk})
+        assert response.url == reverse("test_iteration_detail", kwargs={"pk": test_iteration.pk})
 
-    def test_test_run_execute_view_post(self, client, user, test_run, case):
+    def test_test_iteration_execute_view_post(self, client, user, test_iteration, case):
         client.login(username="testuser", password="testpass")
-        url = reverse("test_run_execute", kwargs={"pk": test_run.pk})
+        url = reverse("test_iteration_execute", kwargs={"pk": test_iteration.pk})
         data = {
             "test_case_id": case.pk,
             "result": "PASS",
@@ -267,7 +267,7 @@ class TestRunViews:
         }
         response = client.post(url, data)
         assert response.status_code == 302
-        assert TestExecution.objects.filter(test_run=test_run, test_case=case).exists()
+        assert TestExecution.objects.filter(test_iteration=test_iteration, test_case=case).exists()
 
 
 @pytest.mark.django_db

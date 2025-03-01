@@ -16,8 +16,8 @@
             {% load guardian_tags %}
             {% get_obj_perms user for suite.project as "project_perms" %}
             {% if "execute_tests" in project_perms %}
-            <a href="{% url 'test_run_create' suite.pk %}" class="btn btn-success">
-                <i class="bi bi-play-fill"></i> 一括テスト実行
+            <a href="{% url 'test_iteration_create' suite.pk %}" class="btn btn-success">
+                <i class="bi bi-play-fill"></i> 一括テストイテレーション
             </a>
             {% endif %}
             {% if "edit_tests" in project_perms %}
@@ -97,7 +97,7 @@
 
 <div class="card">
     <div class="card-header">
-        <h2 class="card-title h5 mb-0">最近のテスト実行</h2>
+        <h2 class="card-title h5 mb-0">最近のテストイテレーション</h2>
     </div>
     <div class="card-body">
         <div class="table-responsive">
@@ -113,23 +113,23 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for run in recent_test_runs %}
+                    {% for iteration in recent_test_iterations %}
                     <tr>
                         <td>
-                            <a href="{% url 'test_run_detail' run.pk %}">{{ run.name }}</a>
+                            <a href="{% url 'test_iteration_detail' iteration.pk %}">{{ iteration.name }}</a>
                         </td>
-                        <td>{{ run.executed_by }}</td>
-                        <td>{{ run.environment }}</td>
-                        <td>{{ run.started_at|date:"Y/m/d H:i" }}</td>
+                        <td>{{ iteration.executed_by }}</td>
+                        <td>{{ iteration.environment }}</td>
+                        <td>{{ iteration.started_at|date:"Y/m/d H:i" }}</td>
                         <td>
-                            <span class="badge {% if run.completed_at %}bg-success{% else %}bg-warning{% endif %}">
-                                {{ run.completed_at|yesno:"完了,実行中" }}
+                            <span class="badge {% if iteration.completed_at %}bg-success{% else %}bg-warning{% endif %}">
+                                {{ iteration.completed_at|yesno:"完了,実行中" }}
                             </span>
                         </td>
                         <td>
-                            {% if run.total_count > 0 %}
-                            {{ run.pass_count }}/{{ run.total_count }}
-                            ({{ run.pass_percentage }}%)
+                            {% if iteration.total_count > 0 %}
+                            {{ iteration.pass_count }}/{{ iteration.total_count }}
+                            ({{ iteration.pass_percentage }}%)
                             {% else %}
                             -
                             {% endif %}
@@ -138,7 +138,7 @@
                     {% empty %}
                     <tr>
                         <td colspan="6" class="text-center">
-                            テスト実行履歴がありません
+                            テストイテレーション履歴がありません
                         </td>
                     </tr>
                     {% endfor %}

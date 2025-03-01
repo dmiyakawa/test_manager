@@ -12,7 +12,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from guardian.shortcuts import assign_perm, remove_perm, get_users_with_perms
-from .models import Project, TestSuite, TestCase, TestRun, TestExecution
+from .models import Project, TestSuite, TestCase, TestIteration, TestExecution
 from .forms import (
     ProjectForm,
     ProjectMemberForm,
@@ -116,9 +116,9 @@ class ProjectMemberRemoveView(ProjectManagerRequired, View):
         return redirect("project_update", pk=pk)
 
 
-class TestRunCreateView(TestExecutorRequired, CreateView):
-    model = TestRun
-    template_name = "test_tracking/test_run_form.html"
+class TestIterationCreateView(TestExecutorRequired, CreateView):
+    model = TestIteration
+    template_name = "test_tracking/test_iteration_form.html"
     fields = ["name", "description", "executed_by", "environment"]
 
     def get_context_data(self, **kwargs):
@@ -142,18 +142,18 @@ class TestRunCreateView(TestExecutorRequired, CreateView):
         return response
 
     def get_success_url(self):
-        return reverse_lazy("test_run_execute", kwargs={"pk": self.object.pk})
+        return reverse_lazy("test_iteration_execute", kwargs={"pk": self.object.pk})
 
     def get_permission_object(self):
         return get_object_or_404(Project, pk=self.kwargs["project_pk"])
 
 
-class TestRunExecuteView(View):
-    template_name = "test_tracking/test_run_execute.html"
+class TestIterationExecuteView(View):
+    template_name = "test_tracking/test_iteration_execute.html"
 
     def get(self, request, pk):
-        test_run = get_object_or_404(TestRun, pk=pk)
-        executed_cases = test_run.executions.values_list("test_case_id", flat=True)
+        test_iteration = get_object_or_404(TestIteration, pk=pk)
+        executed_cases = test_iteration.executions.values_list("test_case_id", flat=True)
         selected_cases = request.session.get("selected_cases", [])
         remaining_cases = [
             int(case_id)
@@ -166,16 +166,16 @@ class TestRunExecuteView(View):
         progress = (completed_count / total_count) * 100 if total_count > 0 else 0
 
         context = {
-            "test_run": test_run,
+            "test_iteration": test_iteration,
             "total_count": total_count,
             "completed_count": completed_count,
             "progress": progress,
         }
 
         if not remaining_cases:
-            if not test_run.completed_at:
-                test_run.complete()
-            return redirect("test_run_detail", pk=test_run.pk)
+            if not test_iteration.completed_at:
+                test_iteration.complete()
+            return redirect("test_iteration_detail", pk=test_iteration.pk)
 
         current_case = TestCase.objects.get(pk=remaining_cases[0])
         context["current_case"] = current_case
@@ -183,32 +183,32 @@ class TestRunExecuteView(View):
         return render(request, self.template_name, context)
 
     def post(self, request, pk):
-        test_run = get_object_or_404(TestRun, pk=pk)
+        test_iteration = get_object_or_404(TestIteration, pk=pk)
         test_case = get_object_or_404(TestCase, pk=request.POST.get("test_case_id"))
 
         # テストケース一覧からの実行の場合
         if "result" not in request.POST:
             request.session["selected_cases"] = [str(test_case.id)]
-            return redirect("test_run_execute", pk=pk)
+            return redirect("test_iteration_execute", pk=pk)
 
         # テスト実行フォームからの送信の場合
         TestExecution.objects.create(
-            test_run=test_run,
+            test_iteration=test_iteration,
             test_case=test_case,
-            executed_by=test_run.executed_by,
-            environment=test_run.environment,
+            executed_by=test_iteration.executed_by,
+            environment=test_iteration.environment,
             result=request.POST["result"],
             actual_result=request.POST.get("actual_result", ""),
             notes=request.POST.get("notes", ""),
         )
 
-        return redirect("test_run_execute", pk=pk)
+        return redirect("test_iteration_execute", pk=pk)
 
 
-class TestRunDetailView(DetailView):
-    model = TestRun
-    template_name = "test_tracking/test_run_detail.html"
-    context_object_name = "test_run"
+class TestIterationDetailView(DetailView):
+    model = TestIteration
+    template_name = "test_tracking/test_iteration_detail.html"
+    context_object_name = "test_iteration"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -231,7 +231,7 @@ class ProjectListView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["test_runs"] = TestRun.objects.all().order_by("-started_at")[:10]
+        context["test_iterations"] = TestIteration.objects.all().order_by("-started_at")[:10]
         return context
 
 
@@ -298,22 +298,22 @@ class TestSuiteDetailView(DetailView):
         context["test_cases"] = self.object.test_cases.all()
         
         # テスト実行の結果を事前に計算
-        recent_test_runs = (
-            self.object.project.test_runs
+        recent_test_iterations = (
+            self.object.project.test_iterations
             .filter(available_suites=self.object)
             .prefetch_related('executions')
             .order_by("-started_at")[:5]
         )
         
-        for run in recent_test_runs:
-            run.pass_count = run.executions.filter(result="PASS").count()
-            run.total_count = run.executions.count()
-            if run.total_count > 0:
-                run.pass_percentage = (run.pass_count * 100) // run.total_count
+        for iteration in recent_test_iterations:
+            iteration.pass_count = iteration.executions.filter(result="PASS").count()
+            iteration.total_count = iteration.executions.count()
+            if iteration.total_count > 0:
+                iteration.pass_percentage = (iteration.pass_count * 100) // iteration.total_count
             else:
-                run.pass_percentage = 0
+                iteration.pass_percentage = 0
         
-        context["recent_test_runs"] = recent_test_runs
+        context["recent_test_iterations"] = recent_test_iterations
         return context
 
 
@@ -411,10 +411,10 @@ class TestCaseDetailView(DetailView):
         return context
 
 
-class TestRunListView(UserPassesTestMixin, ListView):
-    model = TestRun
-    template_name = "test_tracking/test_run_list.html"
-    context_object_name = "test_runs"
+class TestIterationListView(UserPassesTestMixin, ListView):
+    model = TestIteration
+    template_name = "test_tracking/test_iteration_list.html"
+    context_object_name = "test_iterations"
     ordering = ["-started_at"]
 
     def test_func(self):
@@ -422,14 +422,14 @@ class TestRunListView(UserPassesTestMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        for test_run in context["test_runs"]:
-            executions = test_run.executions.all()
-            test_run.pass_count = executions.filter(result="PASS").count()
-            test_run.fail_count = executions.filter(result="FAIL").count()
-            test_run.blocked_count = executions.filter(result="BLOCKED").count()
-            test_run.skipped_count = executions.filter(result="SKIPPED").count()
-            test_run.total_count = executions.count()
-            test_run.pass_percentage = (test_run.pass_count * 100 // test_run.total_count) if test_run.total_count > 0 else 0
+        for test_iteration in context["test_iterations"]:
+            executions = test_iteration.executions.all()
+            test_iteration.pass_count = executions.filter(result="PASS").count()
+            test_iteration.fail_count = executions.filter(result="FAIL").count()
+            test_iteration.blocked_count = executions.filter(result="BLOCKED").count()
+            test_iteration.skipped_count = executions.filter(result="SKIPPED").count()
+            test_iteration.total_count = executions.count()
+            test_iteration.pass_percentage = (test_iteration.pass_count * 100 // test_iteration.total_count) if test_iteration.total_count > 0 else 0
         return context
 
 
@@ -437,7 +437,7 @@ class TestExecutionCreateView(TestExecutorRequired, CreateView):
     model = TestExecution
     template_name = "test_tracking/execution_form.html"
     fields = [
-        "test_run",
+        "test_iteration",
         "executed_by",
         "result",
         "notes",
@@ -449,8 +449,8 @@ class TestExecutionCreateView(TestExecutorRequired, CreateView):
         context = super().get_context_data(**kwargs)
         test_case = get_object_or_404(TestCase, pk=self.kwargs["case_pk"])
         context["test_case"] = test_case
-        context["test_runs"] = (
-            test_case.suite.project.test_runs
+        context["test_iterations"] = (
+            test_case.suite.project.test_iterations
             .filter(
                 available_suites=test_case.suite,
                 completed_at__isnull=True

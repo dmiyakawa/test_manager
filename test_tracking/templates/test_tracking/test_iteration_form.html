@@ -5,12 +5,12 @@
 <div class="mb-4">
     <div class="d-flex justify-content-between align-items-center">
         <div>
-            <h1>テスト実行セッションの作成</h1>
+            <h1>テストイテレーションの作成</h1>
             <h4 class="text-muted mb-0">{{ project.name }}</h4>
         </div>
         <div>
-            <button type="submit" form="test-run-form" class="btn btn-primary" id="start-test-run-top" disabled>
-                <i class="bi bi-play-fill"></i> テスト実行を開始
+            <button type="submit" form="test-iteration-form" class="btn btn-primary" id="start-test-iteration-top" disabled>
+                <i class="bi bi-play-fill"></i> テストイテレーションを開始
             </button>
         </div>
     </div>
@@ -18,7 +18,7 @@
 
 <div class="card mb-4">
     <div class="card-body">
-        <form method="post" id="test-run-form">
+        <form method="post" id="test-iteration-form">
             {% csrf_token %}
             <div class="mb-3">
                 <label for="id_name" class="form-label">セッション名</label>
@@ -93,11 +93,11 @@
 
             <div class="d-flex justify-content-between mt-4">
                 <a href="{% url 'project_detail' project.pk %}" class="btn btn-secondary">キャンセル</a>
-                <button type="submit" class="btn btn-primary" id="start-test-run-bottom" disabled>テスト実行を開始</button>
+                <button type="submit" class="btn btn-primary" id="start-test-iteration-bottom" disabled>テストイテレーションを開始</button>
             </div>
         </form>
     </div>
 </div>
 
-<script src="{% static 'test_tracking/js/test_run_form.js' %}"></script>
+<script src="{% static 'test_tracking/js/test_iteration_form.js' %}"></script>
 {% endblock %}
