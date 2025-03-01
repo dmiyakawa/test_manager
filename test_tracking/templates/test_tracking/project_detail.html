@@ -1,0 +1,119 @@
+{% extends 'test_tracking/base.html' %}
+
+{% block content %}
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <h1>{{ project.name }}</h1>
+        <div class="btn-group">
+            {% load guardian_tags %}
+            {% get_obj_perms user for project as "project_perms" %}
+            {% if "edit_tests" in project_perms %}
+            <a href="{% url 'suite_create' project.pk %}" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> 新規テストスイート作成
+            </a>
+            {% endif %}
+            {% if "manage_project" in project_perms %}
+            <a href="{% url 'project_update' project.pk %}" class="btn btn-secondary">
+                <i class="bi bi-gear-fill"></i> プロジェクト設定
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    <p class="text-muted">
+        作成日: {{ project.created_at|date:"Y/m/d" }} |
+        最終更新: {{ project.updated_at|date:"Y/m/d" }}
+    </p>
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">説明</h5>
+            <p class="card-text">{{ project.description|linebreaks }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="mb-4">
+    <h2>テストスイート一覧</h2>
+    <div class="row">
+        {% for suite in project.test_suites.all %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ suite.name }}</h5>
+                    <p class="card-text">{{ suite.description|truncatewords:30 }}</p>
+                    <div class="mb-3">
+                        <small class="text-muted">
+                            テストケース数: {{ suite.test_cases.count }} |
+                            作成日: {{ suite.created_at|date:"Y/m/d" }}
+                        </small>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="btn-group">
+                            <a href="{% url 'suite_detail' suite.pk %}" class="btn btn-primary btn-sm">詳細</a>
+                            {% if "edit_tests" in project_perms %}
+                            <a href="{% url 'suite_update' suite.pk %}" class="btn btn-secondary btn-sm">編集</a>
+                            <a href="{% url 'suite_delete' suite.pk %}" class="btn btn-danger btn-sm">削除</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                テストスイートがまだ登録されていません。
+                {% if "edit_tests" in project_perms %}
+                <a href="{% url 'suite_create' project.pk %}" class="alert-link">新規テストスイートを作成</a>してください。
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title h5 mb-0">最近の実行結果</h2>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>テストケース</th>
+                        <th>スイート</th>
+                        <th>結果</th>
+                        <th>実行者</th>
+                        <th>実行日時</th>
+                        <th>環境</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for execution in recent_executions %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'case_detail' execution.test_case.pk %}">
+                                {{ execution.test_case.title }}
+                            </a>
+                        </td>
+                        <td>{{ execution.test_case.suite.name }}</td>
+                        <td>
+                            <span class="badge {% if execution.result == 'PASS' %}bg-success{% elif execution.result == 'FAIL' %}bg-danger{% elif execution.result == 'BLOCKED' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                {{ execution.get_result_display }}
+                            </span>
+                        </td>
+                        <td>{{ execution.executed_by }}</td>
+                        <td>{{ execution.executed_at|date:"Y/m/d H:i" }}</td>
+                        <td>{{ execution.environment }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center">実行履歴がありません</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends 'test_tracking/base.html' %}
+
+{% block content %}
+<div class="mb-4">
+    <h1>CSVインポート/エクスポート</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="card-title h5 mb-0">エクスポート</h2>
+            </div>
+            <div class="card-body">
+                <p>各データをCSVファイルとしてダウンロードできます。</p>
+                <div class="list-group">
+                    <a href="{% url 'csv_export' 'projects' %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">プロジェクト</h5>
+                            <small>projects.csv</small>
+                        </div>
+                        <p class="mb-1">プロジェクトの基本情報</p>
+                    </a>
+                    <a href="{% url 'csv_export' 'suites' %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">テストスイート</h5>
+                            <small>suites.csv</small>
+                        </div>
+                        <p class="mb-1">テストスイートの基本情報</p>
+                    </a>
+                    <a href="{% url 'csv_export' 'cases' %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">テストケース</h5>
+                            <small>cases.csv</small>
+                        </div>
+                        <p class="mb-1">テストケースの基本情報</p>
+                    </a>
+                    <a href="{% url 'csv_export' 'steps' %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">テストステップ</h5>
+                            <small>steps.csv</small>
+                        </div>
+                        <p class="mb-1">テストステップの詳細情報</p>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title h5 mb-0">インポート</h2>
+            </div>
+            <div class="card-body">
+                <p>CSVファイルからデータをインポートできます。</p>
+                <div class="alert alert-info">
+                    <h5>インポート時の注意事項</h5>
+                    <ul class="mb-0">
+                        <li>文字コードはUTF-8を推奨します</li>
+                        <li>既存のデータはIDをキーに更新されます</li>
+                        <li>関連するデータは事前にインポートしてください</li>
+                        <li>インポートの順序: プロジェクト → スイート → ケース → ステップ</li>
+                    </ul>
+                </div>
+
+                <div class="accordion" id="importAccordion">
+                    {% for type, info in import_types.items %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading{{ type|title }}">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ type|title }}">
+                                {{ info.title }}
+                            </button>
+                        </h2>
+                        <div id="collapse{{ type|title }}" class="accordion-collapse collapse" data-bs-parent="#importAccordion">
+                            <div class="accordion-body">
+                                <form method="post" action="{% url 'csv_import' type %}" enctype="multipart/form-data" class="import-form">
+                                    {% csrf_token %}
+                                    <div class="mb-3">
+                                        <label class="form-label">CSVファイル ({{ info.filename }})</label>
+                                        <input type="file" class="form-control" name="file" accept=".csv" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">必須列</label>
+                                        <div class="alert alert-secondary">
+                                            {{ info.headers|join:", " }}
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">
+                                        インポート
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const forms = document.querySelectorAll('.import-form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function() {
+            const submitButton = this.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> インポート中...';
+        });
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

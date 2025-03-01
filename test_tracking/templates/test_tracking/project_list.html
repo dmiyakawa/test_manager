@@ -1,0 +1,65 @@
+{% extends 'test_tracking/base.html' %}
+
+{% block content %}
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <h1>プロジェクト一覧</h1>
+        {% if user.is_authenticated %}
+        <a href="{% url 'project_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> 新規プロジェクト作成
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    {% for project in projects %}
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">{{ project.name }}</h5>
+                <p class="card-text">{{ project.description|truncatewords:30 }}</p>
+                <div class="mb-3">
+                    <small class="text-muted">
+                        テストスイート数: {{ project.test_suites.count }} |
+                        作成日: {{ project.created_at|date:"Y/m/d" }}
+                    </small>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        {% load guardian_tags %}
+                        {% get_obj_perms user for project as "project_perms" %}
+                        {% if "manage_project" in project_perms %}
+                        <span class="badge bg-primary">管理者</span>
+                        {% endif %}
+                        {% if "edit_tests" in project_perms %}
+                        <span class="badge bg-success">編集者</span>
+                        {% endif %}
+                        {% if "execute_tests" in project_perms %}
+                        <span class="badge bg-info">実行者</span>
+                        {% endif %}
+                    </div>
+                    <div class="btn-group">
+                        <a href="{% url 'project_detail' project.pk %}" class="btn btn-primary btn-sm">詳細</a>
+                        {% if "manage_project" in project_perms %}
+                        <a href="{% url 'project_update' project.pk %}" class="btn btn-secondary btn-sm">
+                            <i class="bi bi-gear-fill"></i> 設定
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info">
+            プロジェクトがまだ登録されていません。
+            {% if user.is_authenticated %}
+            <a href="{% url 'project_create' %}" class="alert-link">新規プロジェクトを作成</a>してください。
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

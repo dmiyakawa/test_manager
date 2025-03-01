@@ -1,0 +1,28 @@
+{% extends 'test_tracking/base.html' %}
+
+{% block content %}
+<h1 class="mb-4">テストスイート一覧</h1>
+
+<div class="row">
+    {% for suite in suites %}
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{ suite.name }}</h5>
+                <p class="card-text">{{ suite.description|truncatewords:30 }}</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">作成日: {{ suite.created_at|date:"Y/m/d" }}</small>
+                    <a href="{% url 'suite_detail' suite.pk %}" class="btn btn-primary">詳細を見る</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info">
+            テストスイートがまだ登録されていません。管理画面から追加してください。
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends 'test_tracking/base.html' %}
+
+{% block content %}
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1>{{ case.title }}</h1>
+            <p class="text-muted mb-0">
+                プロジェクト: <a href="{% url 'project_detail' case.suite.project.pk %}">{{ case.suite.project.name }}</a> |
+                スイート: <a href="{% url 'suite_detail' case.suite.pk %}">{{ case.suite.name }}</a>
+            </p>
+        </div>
+        <div class="btn-group">
+            {% load guardian_tags %}
+            {% get_obj_perms user for case.suite.project as "project_perms" %}
+            {% if "execute_tests" in project_perms %}
+            <a href="{% url 'execution_create' case.pk %}" class="btn btn-success">
+                <i class="bi bi-play-fill"></i> テスト実行
+            </a>
+            {% endif %}
+            {% if "edit_tests" in project_perms %}
+            <a href="{% url 'case_update' case.pk %}" class="btn btn-secondary">
+                <i class="bi bi-pencil"></i> 編集
+            </a>
+            <a href="{% url 'case_delete' case.pk %}" class="btn btn-danger">
+                <i class="bi bi-trash"></i> 削除
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">説明</h5>
+                <p class="card-text">{{ case.description|linebreaks }}</p>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">前提条件</h5>
+                <p class="card-text">{{ case.prerequisites|linebreaks|default:"なし" }}</p>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">テストステップ</h5>
+                {% for step in case.get_ordered_steps %}
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">ステップ {{ forloop.counter }}</h6>
+                        <div class="mb-3">
+                            <label class="form-label">実行内容</label>
+                            <div class="card-text">{{ step.description|linebreaks }}</div>
+                        </div>
+                        <div>
+                            <label class="form-label">期待される結果</label>
+                            <div class="card-text">{{ step.expected_result|linebreaks }}</div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="alert alert-info">
+                    テストステップが登録されていません。
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">ステータス</h5>
+                <span class="badge {% if case.status == 'ACTIVE' %}bg-success{% elif case.status == 'DRAFT' %}bg-warning{% else %}bg-danger{% endif %} fs-5">
+                    {{ case.get_status_display }}
+                </span>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">優先度</h5>
+                <span class="badge {% if case.priority == 'HIGH' %}bg-danger{% elif case.priority == 'MEDIUM' %}bg-warning{% else %}bg-info{% endif %} fs-5">
+                    {{ case.get_priority_display }}
+                </span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">実行統計</h5>
+                <div class="row text-center">
+                    <div class="col">
+                        <h3 class="text-success">{{ executions|filter_by:"result='PASS'"|length }}</h3>
+                        <small class="text-muted">合格</small>
+                    </div>
+                    <div class="col">
+                        <h3 class="text-danger">{{ executions|filter_by:"result='FAIL'"|length }}</h3>
+                        <small class="text-muted">不合格</small>
+                    </div>
+                    <div class="col">
+                        <h3 class="text-warning">{{ executions|filter_by:"result='BLOCKED'"|length }}</h3>
+                        <small class="text-muted">ブロック</small>
+                    </div>
+                    <div class="col">
+                        <h3 class="text-secondary">{{ executions|filter_by:"result='SKIPPED'"|length }}</h3>
+                        <small class="text-muted">スキップ</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title h5 mb-0">実行履歴</h2>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>実行日時</th>
+                        <th>実行者</th>
+                        <th>結果</th>
+                        <th>環境</th>
+                        <th>実際の結果</th>
+                        <th>備考</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for execution in executions %}
+                    <tr>
+                        <td>{{ execution.executed_at|date:"Y/m/d H:i" }}</td>
+                        <td>{{ execution.executed_by }}</td>
+                        <td>
+                            <span class="badge {% if execution.result == 'PASS' %}bg-success{% elif execution.result == 'FAIL' %}bg-danger{% elif execution.result == 'BLOCKED' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                {{ execution.get_result_display }}
+                            </span>
+                        </td>
+                        <td>{{ execution.environment }}</td>
+                        <td>{{ execution.actual_result|linebreaks }}</td>
+                        <td>{{ execution.notes|linebreaks }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center">実行履歴がありません</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

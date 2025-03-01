@@ -1,0 +1,124 @@
+{% extends 'test_tracking/base.html' %}
+
+{% block content %}
+<div class="mb-4">
+    <h1>テスト実行</h1>
+    <h4 class="text-muted">{{ test_run.name }}</h4>
+    <p>
+        スイート: {{ test_run.suite.name }} |
+        実行者: {{ test_run.executed_by }} |
+        環境: {{ test_run.environment }}
+    </p>
+</div>
+
+<div class="progress mb-4">
+    <div class="progress-bar" role="progressbar" style="width: {{ progress }}%">
+        {{ completed_count }}/{{ total_count }}
+    </div>
+</div>
+
+{% if current_case %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">{{ current_case.title }}</h5>
+    </div>
+    <div class="card-body">
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <h6>前提条件</h6>
+                <p>{{ current_case.prerequisites|linebreaks|default:"なし" }}</p>
+            </div>
+            <div class="col-md-6">
+                <h6>期待される結果</h6>
+                <p>{{ current_case.expected_result|linebreaks }}</p>
+            </div>
+        </div>
+
+        <h6>テストステップ</h6>
+        <div class="mb-4">
+            {{ current_case.steps|linebreaks }}
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="test_case_id" value="{{ current_case.id }}">
+            
+            <div class="mb-3">
+                <label class="form-label">結果</label>
+                <div class="btn-group w-100" role="group">
+                    <input type="radio" class="btn-check" name="result" value="PASS" id="result_pass" required>
+                    <label class="btn btn-outline-success" for="result_pass">合格</label>
+
+                    <input type="radio" class="btn-check" name="result" value="FAIL" id="result_fail">
+                    <label class="btn btn-outline-danger" for="result_fail">不合格</label>
+
+                    <input type="radio" class="btn-check" name="result" value="BLOCKED" id="result_blocked">
+                    <label class="btn btn-outline-warning" for="result_blocked">ブロック</label>
+
+                    <input type="radio" class="btn-check" name="result" value="SKIPPED" id="result_skipped">
+                    <label class="btn btn-outline-secondary" for="result_skipped">スキップ</label>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="actual_result" class="form-label">実際の結果</label>
+                <textarea class="form-control" id="actual_result" name="actual_result" rows="3"></textarea>
+            </div>
+
+            <div class="mb-3">
+                <label for="notes" class="form-label">備考</label>
+                <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'suite_detail' test_run.suite.id %}" class="btn btn-secondary" onclick="return confirm('テスト実行を中断してもよろしいですか？')">中断</a>
+                <button type="submit" class="btn btn-primary">次へ</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">テスト実行完了</h5>
+        <p>すべてのテストケースの実行が完了しました。</p>
+        <div class="d-flex justify-content-between">
+            <a href="{% url 'suite_detail' test_run.suite.id %}" class="btn btn-secondary">スイート詳細に戻る</a>
+            <a href="{% url 'test_run_detail' test_run.id %}" class="btn btn-primary">実行結果を確認</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">実行済みテストケース</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>テストケース</th>
+                        <th>結果</th>
+                        <th>備考</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for execution in test_run.executions.all %}
+                    <tr>
+                        <td>{{ execution.test_case.title }}</td>
+                        <td>
+                            <span class="badge {% if execution.result == 'PASS' %}bg-success{% elif execution.result == 'FAIL' %}bg-danger{% elif execution.result == 'BLOCKED' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                {{ execution.get_result_display }}
+                            </span>
+                        </td>
+                        <td>{{ execution.notes|truncatewords:10 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
