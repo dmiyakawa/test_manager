@@ -50,6 +50,62 @@ class TestProjectViews:
 
 
 @pytest.mark.django_db
+class TestSuiteViews:
+    @pytest.fixture
+    def user(self):
+        return User.objects.create_user(username="testuser", password="testpass")
+
+    @pytest.fixture
+    def project(self):
+        return Project.objects.create(name="テストプロジェクト")
+
+    @pytest.fixture
+    def suite(self, project):
+        return TestSuite.objects.create(
+            project=project,
+            name="テストスイート",
+            description="テストスイートの説明"
+        )
+
+    def test_suite_detail_view(self, client, user, project, suite):
+        client.login(username="testuser", password="testpass")
+        assign_perm("view_project", user, project)
+        url = reverse("suite_detail", kwargs={"pk": suite.pk})
+        response = client.get(url)
+        assert response.status_code == 200
+        content = response.content.decode("utf-8")
+        assert "テストスイート" in content
+        assert "テストスイートの説明" in content
+
+    def test_suite_create_view(self, client, user, project):
+        client.login(username="testuser", password="testpass")
+        assign_perm("edit_tests", user, project)
+        url = reverse("suite_create", kwargs={"project_pk": project.pk})
+        data = {
+            "name": "新規スイート",
+            "description": "新規スイートの説明"
+        }
+        response = client.post(url, data)
+        assert response.status_code == 302
+        suite = TestSuite.objects.get(name="新規スイート")
+        assert suite.description == "新規スイートの説明"
+        assert suite.project == project
+
+    def test_suite_update_view(self, client, user, project, suite):
+        client.login(username="testuser", password="testpass")
+        assign_perm("edit_tests", user, project)
+        url = reverse("suite_update", kwargs={"pk": suite.pk})
+        data = {
+            "name": "更新後のスイート",
+            "description": "更新後の説明"
+        }
+        response = client.post(url, data)
+        assert response.status_code == 302
+        suite.refresh_from_db()
+        assert suite.name == "更新後のスイート"
+        assert suite.description == "更新後の説明"
+
+@pytest.mark.django_db
 class TestTestExecutionViews:
     @pytest.fixture
     def user(self):
@@ -68,9 +124,13 @@ class TestTestExecutionViews:
         assign_perm("execute_tests", user, test_case.suite.project)
 
         # テスト実行を作成
-        test_run = test_case.suite.test_runs.create(
-            name="テスト実行1", executed_by="testuser", environment="テスト環境"
+        test_run = test_case.suite.project.test_runs.create(
+            name="テスト実行1",
+            executed_by="testuser",
+            environment="テスト環境",
+            project=test_case.suite.project
         )
+        test_run.available_suites.add(test_case.suite)
 
         url = reverse("execution_create", kwargs={"case_pk": test_case.pk})
         data = {

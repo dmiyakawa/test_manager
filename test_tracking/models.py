@@ -84,8 +84,8 @@ class TestCase(models.Model):
 
 
 class TestRun(models.Model):
-    suite = models.ForeignKey(
-        TestSuite, on_delete=models.CASCADE, related_name="test_runs"
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="test_runs"
     )
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
@@ -93,13 +93,22 @@ class TestRun(models.Model):
     environment = models.CharField(max_length=200)
     started_at = models.DateTimeField(default=timezone.now)
     completed_at = models.DateTimeField(null=True, blank=True)
+    available_suites = models.ManyToManyField(
+        TestSuite,
+        related_name="available_test_runs",
+        help_text="このテスト実行で選択可能なテストスイート"
+    )
 
     def __str__(self):
-        return f"{self.suite.name} - {self.name} ({self.started_at.strftime('%Y-%m-%d %H:%M')})"
+        return f"{self.project.name} - {self.name} ({self.started_at.strftime('%Y-%m-%d %H:%M')})"
 
     def complete(self):
         self.completed_at = timezone.now()
         self.save()
+
+    def get_available_cases(self):
+        """このテスト実行で選択可能なすべてのテストケースを返す"""
+        return TestCase.objects.filter(suite__in=self.available_suites.all())
 
 
 class TestExecution(models.Model):

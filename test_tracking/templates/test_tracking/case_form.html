@@ -55,6 +55,24 @@
                             {% endif %}
                         </div>
                     </div>
+                    {% empty %}
+                    {# 初期テンプレート - JavaScriptでクローンするために使用 #}
+                    <div class="card mb-3 test-step" id="empty-form-template" style="display: none;">
+                        <div class="card-body">
+                            <input type="hidden" name="steps-__prefix__-order" id="id_steps-__prefix__-order" value="">
+                            <div class="mb-3">
+                                <label class="form-label">実行内容</label>
+                                <textarea class="form-control" name="steps-__prefix__-description" id="id_steps-__prefix__-description" rows="3" required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">期待される結果</label>
+                                <textarea class="form-control" name="steps-__prefix__-expected_result" id="id_steps-__prefix__-expected_result" rows="2" required></textarea>
+                            </div>
+                            <button type="button" class="btn btn-danger btn-sm delete-step">
+                                <i class="bi bi-trash"></i> このステップを削除
+                            </button>
+                        </div>
+                    </div>
                     {% endfor %}
                 </div>
                 <button type="button" class="btn btn-secondary" id="add-step">
@@ -101,9 +119,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const testSteps = document.getElementById('test-steps');
     const addStepButton = document.getElementById('add-step');
     const totalFormsInput = document.getElementById('id_steps-TOTAL_FORMS');
+    const emptyFormTemplate = document.getElementById('empty-form-template');
     
     function updateStepOrders() {
-        const steps = testSteps.querySelectorAll('.test-step');
+        const steps = testSteps.querySelectorAll('.test-step:not([style*="display: none"])');
         steps.forEach((step, index) => {
             const orderInput = step.querySelector('input[name$="-order"]');
             if (orderInput) {
@@ -123,8 +142,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     stepCard.style.display = 'none';
                 } else {
                     stepCard.remove();
-                    updateTotalForms();
                 }
+                updateTotalForms();
                 updateStepOrders();
             });
         });
@@ -136,24 +155,41 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     addStepButton.addEventListener('click', function() {
-        const steps = testSteps.querySelectorAll('.test-step');
+        const steps = testSteps.querySelectorAll('.test-step:not([style*="display: none"])');
         const newIndex = steps.length;
-        const template = steps[0].cloneNode(true);
         
-        // フォーム要素のインデックスを更新
-        template.querySelectorAll('input, textarea').forEach(element => {
-            element.value = '';
-            if (element.name) {
-                element.name = element.name.replace('-0-', `-${newIndex}-`);
-                element.id = element.id.replace('-0-', `-${newIndex}-`);
-            }
-        });
+        let template;
+        if (steps.length > 0) {
+            template = steps[0].cloneNode(true);
+            template.querySelectorAll('input, textarea').forEach(element => {
+                element.value = '';
+                if (element.name) {
+                    element.name = element.name.replace(/-\d+-/, `-${newIndex}-`);
+                    element.id = element.id.replace(/-\d+-/, `-${newIndex}-`);
+                }
+            });
+        } else {
+            template = emptyFormTemplate.cloneNode(true);
+            template.style.display = '';
+            template.id = '';
+            template.querySelectorAll('input, textarea').forEach(element => {
+                if (element.name) {
+                    element.name = element.name.replace('__prefix__', newIndex.toString());
+                    element.id = element.id.replace('__prefix__', newIndex.toString());
+                }
+            });
+        }
 
         testSteps.appendChild(template);
         updateStepOrders();
         updateTotalForms();
         setupDeleteButtons();
     });
+
+    // 初期状態でステップがない場合は、1つ追加する
+    if (testSteps.querySelectorAll('.test-step:not([style*="display: none"])').length === 0) {
+        addStepButton.click();
+    }
 
     setupDeleteButtons();
     updateStepOrders();

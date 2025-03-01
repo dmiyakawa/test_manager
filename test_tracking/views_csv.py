@@ -1,87 +1,89 @@
 import csv
+import json
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views import View
+from django.db import transaction
 from .models import Project, TestSuite, TestCase, TestStep
 
 
 class CSVExportView(View):
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
-        export_type = kwargs.get("type")
-
-        # CSVファイル名とヘッダーの定義
-        file_configs = {
-            "projects": {
-                "filename": "projects.csv",
-                "headers": ["id", "name", "description"],
-                "queryset": Project.objects.all(),
-                "row_func": lambda obj: [obj.id, obj.name, obj.description],
-            },
-            "suites": {
-                "filename": "suites.csv",
-                "headers": ["id", "project_id", "name", "description"],
-                "queryset": TestSuite.objects.all(),
-                "row_func": lambda obj: [
-                    obj.id,
-                    obj.project_id,
-                    obj.name,
-                    obj.description,
-                ],
-            },
-            "cases": {
-                "filename": "cases.csv",
-                "headers": [
-                    "id",
-                    "suite_id",
-                    "title",
-                    "description",
-                    "prerequisites",
-                    "status",
-                    "priority",
-                ],
-                "queryset": TestCase.objects.all(),
-                "row_func": lambda obj: [
-                    obj.id,
-                    obj.suite_id,
-                    obj.title,
-                    obj.description,
-                    obj.prerequisites,
-                    obj.status,
-                    obj.priority,
-                ],
-            },
-            "steps": {
-                "filename": "steps.csv",
-                "headers": ["id", "case_id", "order", "description", "expected_result"],
-                "queryset": TestStep.objects.all(),
-                "row_func": lambda obj: [
-                    obj.id,
-                    obj.test_case_id,
-                    obj.order,
-                    obj.description,
-                    obj.expected_result,
-                ],
-            },
-        }
-
-        config = file_configs.get(export_type)
-        if not config:
-            return HttpResponse("Invalid export type", status=400)
-
         response = HttpResponse(
             content_type="text/csv",
-            headers={
-                "Content-Disposition": f'attachment; filename="{config["filename"]}"'
-            },
+            headers={"Content-Disposition": 'attachment; filename="test_data.csv"'},
         )
 
         writer = csv.writer(response)
-        writer.writerow(config["headers"])
+        writer.writerow([
+            "type",
+            "id",
+            "parent_id",
+            "name",
+            "description",
+            "prerequisites",
+            "status",
+            "priority",
+            "expected_result"
+        ])
 
-        for obj in config["queryset"]:
-            writer.writerow(config["row_func"](obj))
+        # プロジェクトのエクスポート
+        for project in Project.objects.all():
+            writer.writerow([
+                "project",
+                project.id,
+                "",  # 親ID（プロジェクトの場合は空）
+                project.name,
+                project.description,
+                "",  # prerequisites
+                "",  # status
+                "",  # priority
+                ""   # expected_result
+            ])
+
+            # プロジェクトに属するテストスイートのエクスポート
+            for suite in project.test_suites.all():
+                writer.writerow([
+                    "suite",
+                    suite.id,
+                    project.id,  # 親ID（プロジェクトID）
+                    suite.name,
+                    suite.description,
+                    "",  # prerequisites
+                    "",  # status
+                    "",  # priority
+                    ""   # expected_result
+                ])
+
+                # スイートに属するテストケースのエクスポート
+                for case in suite.test_cases.all():
+                    writer.writerow([
+                        "case",
+                        case.id,
+                        suite.id,  # 親ID（スイートID）
+                        case.title,
+                        case.description,
+                        case.prerequisites,
+                        case.status,
+                        case.priority,
+                        ""  # expected_result
+                    ])
+
+                    # テストケースに属するステップのエクスポート
+                    for step in case.steps.all():
+                        writer.writerow([
+                            "step",
+                            step.id,
+                            case.id,  # 親ID（ケースID）
+                            str(step.order),  # orderをname列として使用
+                            step.description,
+                            "",  # prerequisites
+                            "",  # status
+                            "",  # priority
+                            step.expected_result
+                        ])
 
         return response
 
@@ -89,16 +91,13 @@ class CSVExportView(View):
 class CSVImportView(View):
     @method_decorator(login_required)
     def post(self, request, *args, **kwargs):
-        import_type = kwargs.get("type")
         csv_file = request.FILES.get("file")
-
         if not csv_file:
             return HttpResponse("No file uploaded", status=400)
 
         # CSVファイルの文字コードを自動判定
         try:
             import chardet
-
             raw_data = csv_file.read()
             result = chardet.detect(raw_data)
             encoding = result["encoding"]
@@ -108,78 +107,119 @@ class CSVImportView(View):
             csv_file.seek(0)
             csv_content = csv_file.read().decode("utf-8")
 
-        reader = csv.DictReader(csv_content.splitlines())
+        lines = csv_content.splitlines()
+        if not lines:
+            raise ValueError("Empty CSV file")
 
-        # インポート処理の定義
-        import_handlers = {
-            "projects": self._import_projects,
-            "suites": self._import_suites,
-            "cases": self._import_cases,
-            "steps": self._import_steps,
+        # ヘッダー行を取得
+        headers = [h.strip() for h in lines[0].split(",")]
+        if len(headers) != 9:  # 必要なカラム数を確認
+            raise ValueError("Invalid CSV format: incorrect number of columns")
+
+        # 必要なヘッダーが存在することを確認
+        required_headers = [
+            "type", "id", "parent_id", "name", "description",
+            "prerequisites", "status", "priority", "expected_result"
+        ]
+        if not all(h in headers for h in required_headers):
+            raise ValueError("Invalid CSV format: missing required headers")
+
+        # DictReaderを作成
+        reader = csv.DictReader(lines)
+        
+        # 一時保存用の辞書
+        imported_objects = {
+            "project": {},
+            "suite": {},
+            "case": {},
+            "step": {}
         }
 
-        handler = import_handlers.get(import_type)
-        if not handler:
-            return HttpResponse("Invalid import type", status=400)
-
         try:
-            imported_count = handler(reader)
-            return HttpResponse(f"Successfully imported {imported_count} records")
-        except Exception as e:
+            with transaction.atomic():
+                for row in reader:
+                    try:
+                        record_type = row["type"]
+                        record_id = int(row["id"])
+                        parent_id = row["parent_id"]
+                        if parent_id:
+                            parent_id = int(parent_id)
+                        name = row["name"]
+                        description = row["description"]
+                        if record_type not in ["project", "suite", "case", "step"]:
+                            raise ValueError(f"Invalid record type: {record_type}")
+
+                        if record_type == "project":
+                            obj, created = Project.objects.update_or_create(
+                                id=record_id,
+                                defaults={
+                                    "name": name,
+                                    "description": description
+                                }
+                            )
+                            imported_objects["project"][record_id] = obj
+
+                        elif record_type == "suite":
+                            project = imported_objects["project"].get(parent_id)
+                            if not project:
+                                project = Project.objects.get(id=parent_id)
+                                imported_objects["project"][parent_id] = project
+
+                            obj, created = TestSuite.objects.update_or_create(
+                                id=record_id,
+                                defaults={
+                                    "project": project,
+                                    "name": name,
+                                    "description": description
+                                }
+                            )
+                            imported_objects["suite"][record_id] = obj
+
+                        elif record_type == "case":
+                            suite = imported_objects["suite"].get(parent_id)
+                            if not suite:
+                                suite = TestSuite.objects.get(id=parent_id)
+                                imported_objects["suite"][parent_id] = suite
+
+                            obj, created = TestCase.objects.update_or_create(
+                                id=record_id,
+                                defaults={
+                                    "suite": suite,
+                                    "title": name,
+                                    "description": description,
+                                    "prerequisites": row["prerequisites"] or "",
+                                    "status": row["status"] or "DRAFT",
+                                    "priority": row["priority"] or "MEDIUM"
+                                }
+                            )
+                            imported_objects["case"][record_id] = obj
+
+                        elif record_type == "step":
+                            case = imported_objects["case"].get(parent_id)
+                            if not case:
+                                case = TestCase.objects.get(id=parent_id)
+                                imported_objects["case"][parent_id] = case
+
+                            obj, created = TestStep.objects.update_or_create(
+                                id=record_id,
+                                defaults={
+                                    "test_case": case,
+                                    "order": int(name),  # orderはname列から取得
+                                    "description": description,
+                                    "expected_result": row["expected_result"] or ""
+                                }
+                            )
+                            imported_objects["step"][record_id] = obj
+
+                    except (KeyError, ValueError, json.JSONDecodeError) as e:
+                        print(f"Row data: {row}")  # デバッグ用
+                        print(f"Error: {str(e)}")  # デバッグ用
+                        raise ValueError(f"Invalid data format: {str(e)}")
+
+            return HttpResponse("Successfully imported all records")
+        except ValueError as e:
+            print(f"Validation error: {str(e)}")  # デバッグ用
             return HttpResponse(f"Import failed: {str(e)}", status=400)
-
-    def _import_projects(self, reader):
-        count = 0
-        for row in reader:
-            Project.objects.update_or_create(
-                id=row["id"],
-                defaults={"name": row["name"], "description": row["description"]},
-            )
-            count += 1
-        return count
-
-    def _import_suites(self, reader):
-        count = 0
-        for row in reader:
-            TestSuite.objects.update_or_create(
-                id=row["id"],
-                defaults={
-                    "project_id": row["project_id"],
-                    "name": row["name"],
-                    "description": row["description"],
-                },
-            )
-            count += 1
-        return count
-
-    def _import_cases(self, reader):
-        count = 0
-        for row in reader:
-            TestCase.objects.update_or_create(
-                id=row["id"],
-                defaults={
-                    "suite_id": row["suite_id"],
-                    "title": row["title"],
-                    "description": row["description"],
-                    "prerequisites": row["prerequisites"],
-                    "status": row["status"],
-                    "priority": row["priority"],
-                },
-            )
-            count += 1
-        return count
-
-    def _import_steps(self, reader):
-        count = 0
-        for row in reader:
-            TestStep.objects.update_or_create(
-                id=row["id"],
-                defaults={
-                    "test_case_id": row["case_id"],
-                    "order": row["order"],
-                    "description": row["description"],
-                    "expected_result": row["expected_result"],
-                },
-            )
-            count += 1
-        return count
+        except Exception as e:
+            print(f"Unexpected error: {str(e)}")  # デバッグ用
+            return HttpResponse(f"Import failed: Unexpected error occurred", status=400)

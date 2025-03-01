@@ -8,11 +8,9 @@ from django.views.generic import (
     View,
 )
 from django.urls import reverse_lazy
-from django.db.models import Prefetch, Count
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.utils import timezone
 from guardian.shortcuts import assign_perm, remove_perm, get_users_with_perms
 from .models import Project, TestSuite, TestCase, TestRun, TestExecution
 from .forms import (
@@ -20,7 +18,7 @@ from .forms import (
     ProjectMemberForm,
     TestSuiteForm,
     TestCaseForm,
-    TestStepForm,
+    TestStepFormSet,
 )
 from .mixins import ProjectManagerRequired, TestEditorRequired, TestExecutorRequired
 
@@ -34,37 +32,7 @@ class CSVManagementView(UserPassesTestMixin, View):
         return self.request.user.is_superuser
 
     def get(self, request, *args, **kwargs):
-        import_types = {
-            "projects": {
-                "title": "プロジェクト",
-                "filename": "projects.csv",
-                "headers": ["id", "name", "description"],
-            },
-            "suites": {
-                "title": "テストスイート",
-                "filename": "suites.csv",
-                "headers": ["id", "project_id", "name", "description"],
-            },
-            "cases": {
-                "title": "テストケース",
-                "filename": "cases.csv",
-                "headers": [
-                    "id",
-                    "suite_id",
-                    "title",
-                    "description",
-                    "prerequisites",
-                    "status",
-                    "priority",
-                ],
-            },
-            "steps": {
-                "title": "テストステップ",
-                "filename": "steps.csv",
-                "headers": ["id", "case_id", "order", "description", "expected_result"],
-            },
-        }
-        return render(request, self.template_name, {"import_types": import_types})
+        return render(request, self.template_name)
 
 
 class ProjectCreateView(LoginRequiredMixin, CreateView):
@@ -138,19 +106,24 @@ class ProjectMemberRemoveView(ProjectManagerRequired, View):
         return redirect("project_update", pk=pk)
 
 
-class TestRunCreateView(CreateView):
+class TestRunCreateView(TestExecutorRequired, CreateView):
     model = TestRun
     template_name = "test_tracking/test_run_form.html"
     fields = ["name", "description", "executed_by", "environment"]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["suite"] = get_object_or_404(TestSuite, pk=self.kwargs["suite_pk"])
+        context["project"] = get_object_or_404(Project, pk=self.kwargs["project_pk"])
         return context
 
     def form_valid(self, form):
-        form.instance.suite = get_object_or_404(TestSuite, pk=self.kwargs["suite_pk"])
+        # プロジェクトを設定
+        form.instance.project = get_object_or_404(Project, pk=self.kwargs["project_pk"])
         response = super().form_valid(form)
+
+        # 選択されたスイートを設定
+        selected_suites = self.request.POST.getlist("selected_suites")
+        self.object.available_suites.set(selected_suites)
 
         # 選択されたテストケースをセッションに保存
         selected_cases = self.request.POST.getlist("selected_cases")
@@ -160,6 +133,9 @@ class TestRunCreateView(CreateView):
 
     def get_success_url(self):
         return reverse_lazy("test_run_execute", kwargs={"pk": self.object.pk})
+
+    def get_permission_object(self):
+        return get_object_or_404(Project, pk=self.kwargs["project_pk"])
 
 
 class TestRunExecuteView(View):
@@ -300,7 +276,24 @@ class TestSuiteDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["test_cases"] = self.object.test_cases.all()
-        context["recent_test_runs"] = self.object.test_runs.order_by("-started_at")[:5]
+        
+        # テスト実行の結果を事前に計算
+        recent_test_runs = (
+            self.object.project.test_runs
+            .filter(available_suites=self.object)
+            .prefetch_related('executions')
+            .order_by("-started_at")[:5]
+        )
+        
+        for run in recent_test_runs:
+            run.pass_count = run.executions.filter(result="PASS").count()
+            run.total_count = run.executions.count()
+            if run.total_count > 0:
+                run.pass_percentage = (run.pass_count * 100) // run.total_count
+            else:
+                run.pass_percentage = 0
+        
+        context["recent_test_runs"] = recent_test_runs
         return context
 
 
@@ -312,9 +305,12 @@ class TestCaseCreateView(TestEditorRequired, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         if self.request.POST:
-            context["steps_formset"] = TestStepForm(self.request.POST)
+            context["steps_formset"] = TestStepFormSet(
+                self.request.POST,
+                prefix="steps"
+            )
         else:
-            context["steps_formset"] = TestStepForm()
+            context["steps_formset"] = TestStepFormSet(prefix="steps")
         return context
 
     def form_valid(self, form):
@@ -342,11 +338,16 @@ class TestCaseUpdateView(TestEditorRequired, UpdateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         if self.request.POST:
-            context["steps_formset"] = TestStepForm(
-                self.request.POST, instance=self.object
+            context["steps_formset"] = TestStepFormSet(
+                self.request.POST,
+                instance=self.object,
+                prefix="steps"
             )
         else:
-            context["steps_formset"] = TestStepForm(instance=self.object)
+            context["steps_formset"] = TestStepFormSet(
+                instance=self.object,
+                prefix="steps"
+            )
         return context
 
     def form_valid(self, form):
@@ -406,8 +407,12 @@ class TestExecutionCreateView(TestExecutorRequired, CreateView):
         context = super().get_context_data(**kwargs)
         test_case = get_object_or_404(TestCase, pk=self.kwargs["case_pk"])
         context["test_case"] = test_case
-        context["test_runs"] = test_case.suite.test_runs.filter(
-            completed_at__isnull=True
+        context["test_runs"] = (
+            test_case.suite.project.test_runs
+            .filter(
+                available_suites=test_case.suite,
+                completed_at__isnull=True
+            )
         )
         return context
 

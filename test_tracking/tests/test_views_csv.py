@@ -1,4 +1,7 @@
 import pytest
+import json
+import csv
+import io
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -17,12 +20,17 @@ class TestCSVViews:
 
     @pytest.fixture
     def csv_data(self):
-        return {
-            "projects": b"id,name,description\n1,Test Project,Test Description",
-            "suites": b"id,project_id,name,description\n1,1,Test Suite,Test Suite Description",
-            "cases": b"id,suite_id,title,description,prerequisites,status,priority\n1,1,Test Case,Test Description,,ACTIVE,HIGH",
-            "steps": b"id,case_id,order,description,expected_result\n1,1,1,Test Step,Expected Result",
-        }
+        data = [
+            ["type", "id", "parent_id", "name", "description", "prerequisites", "status", "priority", "expected_result"],
+            ["project", "1", "", "Test Project", "Test Description", "", "", "", ""],
+            ["suite", "1", "1", "Test Suite", "Test Suite Description", "", "", "", ""],
+            ["case", "1", "1", "Test Case", "Test Description", "", "ACTIVE", "HIGH", ""],
+            ["step", "1", "1", "1", "Test Step", "", "", "", "Expected Result"]
+        ]
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerows(data)
+        return output.getvalue().encode('utf-8')
 
     def test_csv_management_view(self, client, admin_user):
         client.login(username="admin", password="adminpass")
@@ -30,8 +38,8 @@ class TestCSVViews:
         response = client.get(url)
         assert response.status_code == 200
         content = response.content.decode("utf-8")
-        assert "プロジェクト" in content
-        assert "テストスイート" in content
+        assert "プロジェクトデータ" in content
+        assert "test_data.csv" in content
 
     def test_csv_management_view_unauthorized(self, client):
         url = reverse("csv_management")
@@ -41,70 +49,98 @@ class TestCSVViews:
     def test_csv_export(self, client, admin_user):
         client.login(username="admin", password="adminpass")
 
-        # プロジェクトを作成
+        # テストデータを作成
         project = Project.objects.create(
-            name="Test Project", description="Test Description"
+            id=1, name="Test Project", description="Test Description"
+        )
+        suite = TestSuite.objects.create(
+            id=1,
+            project=project,
+            name="Test Suite",
+            description="Test Suite Description"
+        )
+        case = TestCase.objects.create(
+            id=1,
+            suite=suite,
+            title="Test Case",
+            description="Test Description",
+            status="ACTIVE",
+            priority="HIGH"
+        )
+        step = TestStep.objects.create(
+            id=1,
+            test_case=case,
+            order=1,
+            description="Test Step",
+            expected_result="Expected Result"
         )
 
-        # プロジェクトのエクスポート
-        url = reverse("csv_export", kwargs={"type": "projects"})
+        # エクスポート
+        url = reverse("csv_export")
         response = client.get(url)
         assert response.status_code == 200
         assert response["Content-Type"] == "text/csv"
-        assert "Test Project" in str(response.content)
+        content = response.content.decode("utf-8")
+
+        # 各レコードが含まれていることを確認
+        assert "Test Project" in content
+        assert "Test Suite" in content
+        assert "Test Case" in content
+        assert "Test Step" in content
+        assert "Expected Result" in content
 
     def test_csv_import(self, client, admin_user, csv_data):
         client.login(username="admin", password="adminpass")
 
-        # プロジェクトのインポート
-        url = reverse("csv_import", kwargs={"type": "projects"})
+        # インポート
+        url = reverse("csv_import")
         csv_file = SimpleUploadedFile(
-            "projects.csv", csv_data["projects"], content_type="text/csv"
+            "test_data.csv", csv_data, content_type="text/csv"
         )
         response = client.post(url, {"file": csv_file})
         assert response.status_code == 200
+
+        # データが正しくインポートされたことを確認
         assert Project.objects.count() == 1
         project = Project.objects.first()
         assert project.name == "Test Project"
 
-        # テストスイートのインポート
-        url = reverse("csv_import", kwargs={"type": "suites"})
-        csv_file = SimpleUploadedFile(
-            "suites.csv", csv_data["suites"], content_type="text/csv"
-        )
-        response = client.post(url, {"file": csv_file})
-        assert response.status_code == 200
         assert TestSuite.objects.count() == 1
+        suite = TestSuite.objects.first()
+        assert suite.name == "Test Suite"
+        assert suite.project == project
 
-        # テストケースのインポート
-        url = reverse("csv_import", kwargs={"type": "cases"})
-        csv_file = SimpleUploadedFile(
-            "cases.csv", csv_data["cases"], content_type="text/csv"
-        )
-        response = client.post(url, {"file": csv_file})
-        assert response.status_code == 200
         assert TestCase.objects.count() == 1
+        case = TestCase.objects.first()
+        assert case.title == "Test Case"
+        assert case.suite == suite
+        assert case.status == "ACTIVE"
+        assert case.priority == "HIGH"
 
-        # テストステップのインポート
-        url = reverse("csv_import", kwargs={"type": "steps"})
-        csv_file = SimpleUploadedFile(
-            "steps.csv", csv_data["steps"], content_type="text/csv"
-        )
-        response = client.post(url, {"file": csv_file})
-        assert response.status_code == 200
         assert TestStep.objects.count() == 1
-
-    def test_csv_import_invalid_type(self, client, admin_user):
-        client.login(username="admin", password="adminpass")
-        url = reverse("csv_import", kwargs={"type": "invalid"})
-        csv_file = SimpleUploadedFile(
-            "invalid.csv", b"invalid data", content_type="text/csv"
-        )
-        response = client.post(url, {"file": csv_file})
-        assert response.status_code == 400
+        step = TestStep.objects.first()
+        assert step.test_case == case
+        assert step.order == 1
+        assert step.description == "Test Step"
+        assert step.expected_result == "Expected Result"
 
     def test_csv_import_no_file(self, client, admin_user):
         client.login(username="admin", password="adminpass")
-        url = reverse("csv_import", kwargs={"type": "projects"})
+        url = reverse("csv_import")
         response = client.post(url, {})
+        assert response.status_code == 400
+
+    def test_csv_import_invalid_data(self, client, admin_user):
+        client.login(username="admin", password="adminpass")
+        url = reverse("csv_import")
+        invalid_data = (
+            b"type,id,parent_id,name,description,prerequisites,status,priority,expected_result\r\n"
+            b"invalid,1,,Test,Test,,,,\r\n"
+        )
+        csv_file = SimpleUploadedFile(
+            "test_data.csv",
+            invalid_data,
+            content_type="text/csv"
+        )
+        response = client.post(url, {"file": csv_file})
         assert response.status_code == 400

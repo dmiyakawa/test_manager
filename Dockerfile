@@ -56,10 +56,4 @@ RUN python manage.py collectstatic --noinput
 EXPOSE 8000
 
 # Start gunicorn
-CMD ["gunicorn", \
-    "--bind", "0.0.0.0:8000", \
-    "--workers", "3", \
-    "--timeout", "120", \
-    "--access-logfile", "-", \
-    "--error-logfile", "-", \
-    "test_manager.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "test_manager.wsgi:application"]

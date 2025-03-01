@@ -6,13 +6,14 @@ from .models import Project, TestSuite, TestCase, TestRun, TestExecution
 class TestRunAdmin(admin.ModelAdmin):
     list_display = (
         "name",
-        "suite",
+        "project",
         "executed_by",
         "environment",
         "started_at",
         "completed_at",
     )
-    list_filter = ("suite", "environment", "completed_at")
+    list_filter = ("project", "environment", "completed_at")
+    filter_horizontal = ("available_suites",)
     search_fields = ("name", "description", "executed_by")
 
 

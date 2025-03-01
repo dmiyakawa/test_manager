@@ -4,10 +4,10 @@ from . import views, views_csv
 urlpatterns = [
     # CSV import/export
     path(
-        "csv/export/<str:type>/", views_csv.CSVExportView.as_view(), name="csv_export"
+        "csv/export/", views_csv.CSVExportView.as_view(), name="csv_export"
     ),
     path(
-        "csv/import/<str:type>/", views_csv.CSVImportView.as_view(), name="csv_import"
+        "csv/import/", views_csv.CSVImportView.as_view(), name="csv_import"
     ),
     path("csv/", views.CSVManagementView.as_view(), name="csv_management"),
     # プロジェクト管理
@@ -63,7 +63,7 @@ urlpatterns = [
         name="execution_create",
     ),
     path(
-        "suite/<int:suite_pk>/test-run/create/",
+        "project/<int:project_pk>/test-run/create/",
         views.TestRunCreateView.as_view(),
         name="test_run_create",
     ),
