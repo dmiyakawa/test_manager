@@ -1,213 +1,78 @@
-{% extends 'test_tracking/base.html' %}
+{% extends "test_tracking/base.html" %}
 
 {% block content %}
-<div class="mb-4">
-    <h1>テスト実行</h1>
-    <h4 class="text-muted">{{ test_case.title }}</h4>
-</div>
-
-<div class="row mb-4">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">前提条件</h5>
-                <p class="card-text">{{ test_case.prerequisites|linebreaks|default:"なし" }}</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">期待される結果</h5>
-                <p class="card-text">{{ test_case.expected_result|linebreaks }}</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card mb-4">
-    <div class="card-body">
-        <h5 class="card-title">テストステップ</h5>
-        {% for step in test_case.get_ordered_steps %}
-        <div class="card mb-3">
-            <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">ステップ {{ forloop.counter }}</h6>
-                <div class="mb-3">
-                    <label class="form-label">実行内容</label>
-                    <div class="card-text">{{ step.description|linebreaks }}</div>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="h5 mb-0">テスト実行</h2>
                 </div>
-                <div>
-                    <label class="form-label">期待される結果</label>
-                    <div class="card-text">{{ step.expected_result|linebreaks }}</div>
-                </div>
-            </div>
-        </div>
-        {% empty %}
-        <div class="alert alert-warning">
-            テストステップが登録されていません。先にテストケースを編集してステップを追加してください。
-        </div>
-        {% endfor %}
-    </div>
-</div>
+                <div class="card-body">
+                    <h3 class="h6 mb-3">テストケース: {{ test_case.title }}</h3>
 
-<div class="card">
-    <div class="card-body">
-        <h5 class="card-title">実行結果の登録</h5>
-        <form method="post">
-            {% csrf_token %}
-            
-            <div class="mb-3">
-                <label for="id_test_run" class="form-label">テスト実行</label>
-                {{ form.test_run.errors }}
-                <select class="form-select" id="id_test_run" name="test_run" required>
-                    <option value="">テスト実行を選択</option>
-                    {% for run in test_runs %}
-                    <option value="{{ run.pk }}">{{ run.name }} ({{ run.environment }})</option>
-                    {% endfor %}
-                </select>
-                <div class="form-text">
-                    テスト実行がない場合は、先にテストスイートからテスト実行を作成してください。
-                </div>
-            </div>
-
-            <div class="mb-3">
-                <label for="id_executed_by" class="form-label">実行者</label>
-                {{ form.executed_by.errors }}
-                <input type="text" class="form-control" id="id_executed_by" name="executed_by" value="{{ user.username }}" required>
-            </div>
-
-            <div class="mb-3">
-                <label for="id_environment" class="form-label">実行環境</label>
-                {{ form.environment.errors }}
-                <input type="text" class="form-control" id="id_environment" name="environment" required>
-                <div class="form-text">例: Windows 11, Chrome 120.0</div>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">結果</label>
-                {{ form.result.errors }}
-                <div class="btn-group w-100" role="group">
-                    <input type="radio" class="btn-check" name="result" value="PASS" id="result_pass" required>
-                    <label class="btn btn-outline-success" for="result_pass">合格</label>
-
-                    <input type="radio" class="btn-check" name="result" value="FAIL" id="result_fail">
-                    <label class="btn btn-outline-danger" for="result_fail">不合格</label>
-
-                    <input type="radio" class="btn-check" name="result" value="BLOCKED" id="result_blocked">
-                    <label class="btn btn-outline-warning" for="result_blocked">ブロック</label>
-
-                    <input type="radio" class="btn-check" name="result" value="SKIPPED" id="result_skipped">
-                    <label class="btn btn-outline-secondary" for="result_skipped">スキップ</label>
-                </div>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">ステップごとの実行結果</label>
-                {% for step in test_case.get_ordered_steps %}
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <h6 class="card-subtitle mb-2 text-muted">ステップ {{ forloop.counter }}</h6>
-                        <div class="mb-3">
-                            <label class="form-label">実行内容</label>
-                            <div class="card-text">{{ step.description|linebreaks }}</div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">期待される結果</label>
-                            <div class="card-text">{{ step.expected_result|linebreaks }}</div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">実際の結果</label>
-                            <textarea class="form-control step-result" data-step="{{ step.order }}" rows="2"></textarea>
-                        </div>
+                    <div class="mb-4">
+                        <h4 class="h6">前提条件:</h4>
+                        <p>{{ test_case.prerequisites|default:"なし"|linebreaks }}</p>
                     </div>
+
+                    <div class="mb-4">
+                        <h4 class="h6">テストステップ:</h4>
+                        <ol class="list-group list-group-numbered mb-3">
+                            {% for step in test_case.steps.all %}
+                            <li class="list-group-item">
+                                <div class="ms-2">
+                                    <div>{{ step.description }}</div>
+                                    <div class="text-muted small">
+                                        <i class="bi bi-check-circle"></i> 期待結果: {{ step.expected_result }}
+                                    </div>
+                                </div>
+                            </li>
+                            {% endfor %}
+                        </ol>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        {% for field in form %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                            {% if field.name == "result" %}
+                            <select name="{{ field.name }}" id="{{ field.id_for_label }}" class="form-select">
+                                <option value="PASS">合格</option>
+                                <option value="FAIL">不合格</option>
+                                <option value="BLOCKED">ブロック</option>
+                                <option value="SKIPPED">スキップ</option>
+                            </select>
+                            {% elif field.name == "notes" or field.name == "actual_result" %}
+                            <textarea name="{{ field.name }}" id="{{ field.id_for_label }}" class="form-control" rows="3"></textarea>
+                            {% else %}
+                            {{ field }}
+                            {% endif %}
+                            {% if field.help_text %}
+                            <div class="form-text">{{ field.help_text }}</div>
+                            {% endif %}
+                            {% if field.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in field.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> 保存
+                            </button>
+                            <a href="{% url 'case_detail' test_case.pk %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> キャンセル
+                            </a>
+                        </div>
+                    </form>
                 </div>
-                {% endfor %}
             </div>
-
-            <div class="mb-3">
-                <label for="id_actual_result" class="form-label">全体の実行結果</label>
-                {{ form.actual_result.errors }}
-                <textarea class="form-control" id="id_actual_result" name="actual_result" rows="3"></textarea>
-            </div>
-
-            <div class="mb-3">
-                <label for="id_notes" class="form-label">備考</label>
-                {{ form.notes.errors }}
-                <textarea class="form-control" id="id_notes" name="notes" rows="2"></textarea>
-                <div class="form-text">問題が発生した場合の詳細な状況や、スキップした理由などを記録してください。</div>
-            </div>
-
-            <div class="d-flex justify-content-between">
-                <a href="{% url 'case_detail' test_case.pk %}" class="btn btn-secondary">キャンセル</a>
-                <button type="submit" class="btn btn-primary">登録</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-{% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form');
-    const actualResultInput = document.getElementById('id_actual_result');
-    const stepResults = document.querySelectorAll('.step-result');
-
-    form.addEventListener('submit', function() {
-        // ステップごとの実行結果を全体の実行結果にまとめる
-        const results = [];
-        stepResults.forEach((textarea, index) => {
-            if (textarea.value.trim()) {
-                results.push(`ステップ ${index + 1}: ${textarea.value.trim()}`);
-            }
-        });
-        
-        if (results.length > 0) {
-            const currentValue = actualResultInput.value.trim();
-            const newValue = results.join('\n\n');
-            actualResultInput.value = currentValue
-                ? `${currentValue}\n\n${newValue}`
-                : newValue;
-        }
-    });
-});
-</script>
-{% endblock %}
-
-{% if test_case.executions.exists %}
-<div class="card mt-4">
-    <div class="card-header">
-        <h5 class="card-title mb-0">過去の実行結果</h5>
-    </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>実行日時</th>
-                        <th>実行者</th>
-                        <th>結果</th>
-                        <th>環境</th>
-                        <th>実際の結果</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for execution in test_case.executions.all|slice:":5" %}
-                    <tr>
-                        <td>{{ execution.executed_at|date:"Y/m/d H:i" }}</td>
-                        <td>{{ execution.executed_by }}</td>
-                        <td>
-                            <span class="badge {% if execution.result == 'PASS' %}bg-success{% elif execution.result == 'FAIL' %}bg-danger{% elif execution.result == 'BLOCKED' %}bg-warning{% else %}bg-secondary{% endif %}">
-                                {{ execution.get_result_display }}
-                            </span>
-                        </td>
-                        <td>{{ execution.environment }}</td>
-                        <td>{{ execution.actual_result|truncatewords:10 }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
         </div>
     </div>
 </div>
-{% endif %}
 {% endblock %}

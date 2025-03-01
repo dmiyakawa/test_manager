@@ -25,6 +25,16 @@ from .mixins import ProjectManagerRequired, TestEditorRequired, TestExecutorRequ
 User = get_user_model()
 
 
+class AdminDashboardView(UserPassesTestMixin, View):
+    template_name = "test_tracking/admin_dashboard.html"
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name)
+
+
 class CSVManagementView(UserPassesTestMixin, View):
     template_name = "test_tracking/csv_management.html"
 
@@ -151,40 +161,45 @@ class TestRunExecuteView(View):
             if int(case_id) not in executed_cases
         ]
 
+        total_count = len(selected_cases)
+        completed_count = len(executed_cases)
+        progress = (completed_count / total_count) * 100 if total_count > 0 else 0
+
+        context = {
+            "test_run": test_run,
+            "total_count": total_count,
+            "completed_count": completed_count,
+            "progress": progress,
+        }
+
         if not remaining_cases:
             if not test_run.completed_at:
                 test_run.complete()
             return redirect("test_run_detail", pk=test_run.pk)
 
         current_case = TestCase.objects.get(pk=remaining_cases[0])
-        total_count = len(selected_cases)
-        completed_count = len(executed_cases)
-        progress = (completed_count / total_count) * 100 if total_count > 0 else 0
+        context["current_case"] = current_case
 
-        return render(
-            request,
-            self.template_name,
-            {
-                "test_run": test_run,
-                "current_case": current_case,
-                "total_count": total_count,
-                "completed_count": completed_count,
-                "progress": progress,
-            },
-        )
+        return render(request, self.template_name, context)
 
     def post(self, request, pk):
         test_run = get_object_or_404(TestRun, pk=pk)
-        test_case = get_object_or_404(TestCase, pk=request.POST["test_case_id"])
+        test_case = get_object_or_404(TestCase, pk=request.POST.get("test_case_id"))
 
+        # テストケース一覧からの実行の場合
+        if "result" not in request.POST:
+            request.session["selected_cases"] = [str(test_case.id)]
+            return redirect("test_run_execute", pk=pk)
+
+        # テスト実行フォームからの送信の場合
         TestExecution.objects.create(
             test_run=test_run,
             test_case=test_case,
             executed_by=test_run.executed_by,
             environment=test_run.environment,
             result=request.POST["result"],
-            actual_result=request.POST["actual_result"],
-            notes=request.POST["notes"],
+            actual_result=request.POST.get("actual_result", ""),
+            notes=request.POST.get("notes", ""),
         )
 
         return redirect("test_run_execute", pk=pk)
@@ -213,6 +228,11 @@ class ProjectListView(ListView):
     model = Project
     template_name = "test_tracking/project_list.html"
     context_object_name = "projects"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["test_runs"] = TestRun.objects.all().order_by("-started_at")[:10]
+        return context
 
 
 class ProjectDetailView(DetailView):
@@ -388,6 +408,28 @@ class TestCaseDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["executions"] = self.object.executions.order_by("-executed_at")
+        return context
+
+
+class TestRunListView(UserPassesTestMixin, ListView):
+    model = TestRun
+    template_name = "test_tracking/test_run_list.html"
+    context_object_name = "test_runs"
+    ordering = ["-started_at"]
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        for test_run in context["test_runs"]:
+            executions = test_run.executions.all()
+            test_run.pass_count = executions.filter(result="PASS").count()
+            test_run.fail_count = executions.filter(result="FAIL").count()
+            test_run.blocked_count = executions.filter(result="BLOCKED").count()
+            test_run.skipped_count = executions.filter(result="SKIPPED").count()
+            test_run.total_count = executions.count()
+            test_run.pass_percentage = (test_run.pass_count * 100 // test_run.total_count) if test_run.total_count > 0 else 0
         return context
 
 

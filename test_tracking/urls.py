@@ -2,7 +2,7 @@ from django.urls import path
 from . import views, views_csv
 
 urlpatterns = [
-    # CSV import/export
+    path('admin-dashboard/', views.AdminDashboardView.as_view(), name='admin_dashboard'),
     path(
         "csv/export/", views_csv.CSVExportView.as_view(), name="csv_export"
     ),
@@ -61,7 +61,6 @@ urlpatterns = [
         "case/<int:pk>/delete/", views.TestCaseDeleteView.as_view(), name="case_delete"
     ),
     path("cases/", views.TestCaseListView.as_view(), name="case_list"),
-    # テスト実行
     path(
         "case/<int:case_pk>/execute/",
         views.TestExecutionCreateView.as_view(),
@@ -80,4 +79,5 @@ urlpatterns = [
     path(
         "test-run/<int:pk>/", views.TestRunDetailView.as_view(), name="test_run_detail"
     ),
+    path("test-runs/", views.TestRunListView.as_view(), name="test_run_list"),
 ]

@@ -1,198 +1,119 @@
-{% extends 'test_tracking/base.html' %}
+{% extends "test_tracking/base.html" %}
 
 {% block content %}
-<div class="mb-4">
-    <h1>{% if form.instance.pk %}テストケースの編集{% else %}新規テストケース作成{% endif %}</h1>
-</div>
-
-<div class="card">
-    <div class="card-body">
-        <form method="post">
-            {% csrf_token %}
-            
-            <div class="mb-3">
-                <label for="id_title" class="form-label">タイトル</label>
-                {{ form.title.errors }}
-                <input type="text" class="form-control" id="id_title" name="title" value="{{ form.title.value|default:'' }}" required>
-            </div>
-
-            <div class="mb-3">
-                <label for="id_description" class="form-label">説明</label>
-                {{ form.description.errors }}
-                <textarea class="form-control" id="id_description" name="description" rows="3" required>{{ form.description.value|default:'' }}</textarea>
-            </div>
-
-            <div class="mb-3">
-                <label for="id_prerequisites" class="form-label">前提条件</label>
-                {{ form.prerequisites.errors }}
-                <textarea class="form-control" id="id_prerequisites" name="prerequisites" rows="3">{{ form.prerequisites.value|default:'' }}</textarea>
-                <div class="form-text">テストを実行するために必要な条件や環境を記述してください。</div>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">テストステップ</label>
-                {{ steps_formset.management_form }}
-                <div id="test-steps">
-                    {% for step_form in steps_formset %}
-                    <div class="card mb-3 test-step">
-                        <div class="card-body">
-                            {{ step_form.order }}
-                            <div class="mb-3">
-                                <label class="form-label">実行内容</label>
-                                {{ step_form.description.errors }}
-                                <textarea class="form-control" name="{{ step_form.description.html_name }}" rows="3" required>{{ step_form.description.value|default:'' }}</textarea>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="h5 mb-0">{% if form.instance.pk %}テストケースの編集{% else %}新規テストケース作成{% endif %}</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {% for field in form %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                            {% if field.name == "status" or field.name == "priority" %}
+                            <select name="{{ field.name }}" id="{{ field.id_for_label }}" class="form-select">
+                                {% for value, label in field.field.choices %}
+                                <option value="{{ value }}" {% if field.value == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            {% elif field.name == "description" or field.name == "prerequisites" %}
+                            <textarea name="{{ field.name }}" id="{{ field.id_for_label }}" class="form-control" rows="3">{{ field.value|default:'' }}</textarea>
+                            {% else %}
+                            <input type="{{ field.field.widget.input_type }}" name="{{ field.name }}" 
+                                   id="{{ field.id_for_label }}" class="form-control" 
+                                   value="{{ field.value|default:'' }}">
+                            {% endif %}
+                            {% if field.help_text %}
+                            <div class="form-text">{{ field.help_text }}</div>
+                            {% endif %}
+                            {% if field.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in field.errors %}
+                                {{ error }}
+                                {% endfor %}
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">期待される結果</label>
-                                {{ step_form.expected_result.errors }}
-                                <textarea class="form-control" name="{{ step_form.expected_result.html_name }}" rows="2" required>{{ step_form.expected_result.value|default:'' }}</textarea>
-                            </div>
-                            {% if step_form.instance.pk %}
-                            {{ step_form.DELETE }}
-                            <button type="button" class="btn btn-danger btn-sm delete-step">
-                                <i class="bi bi-trash"></i> このステップを削除
-                            </button>
                             {% endif %}
                         </div>
-                    </div>
-                    {% empty %}
-                    {# 初期テンプレート - JavaScriptでクローンするために使用 #}
-                    <div class="card mb-3 test-step" id="empty-form-template" style="display: none;">
-                        <div class="card-body">
-                            <input type="hidden" name="steps-__prefix__-order" id="id_steps-__prefix__-order" value="">
-                            <div class="mb-3">
-                                <label class="form-label">実行内容</label>
-                                <textarea class="form-control" name="steps-__prefix__-description" id="id_steps-__prefix__-description" rows="3" required></textarea>
+                        {% endfor %}
+
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h3 class="h6 mb-0">テストステップ</h3>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">期待される結果</label>
-                                <textarea class="form-control" name="steps-__prefix__-expected_result" id="id_steps-__prefix__-expected_result" rows="2" required></textarea>
+                            <div class="card-body">
+                                {{ steps_formset.management_form }}
+                                {% for form in steps_formset %}
+                                <div class="step-form mb-4">
+                                    <h4 class="h6">ステップ {{ forloop.counter }}</h4>
+                                    {% for field in form %}
+                                    {% if field.name != 'DELETE' and field.name != 'id' %}
+                                    <div class="mb-3">
+                                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                        {% if field.name == "description" or field.name == "expected_result" %}
+                                        <textarea name="{{ field.name }}" id="{{ field.id_for_label }}" class="form-control" rows="2">{{ field.value|default:'' }}</textarea>
+                                        {% else %}
+                                        <input type="{{ field.field.widget.input_type }}" name="{{ field.name }}" 
+                                               id="{{ field.id_for_label }}" class="form-control" 
+                                               value="{{ field.value|default:'' }}">
+                                        {% endif %}
+                                        {% if field.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in field.errors %}
+                                            {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                    {% if form.instance.pk %}
+                                    <div class="form-check mb-3">
+                                        {{ form.DELETE }}
+                                        <label class="form-check-label" for="{{ form.DELETE.id_for_label }}">
+                                            このステップを削除
+                                        </label>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
                             </div>
-                            <button type="button" class="btn btn-danger btn-sm delete-step">
-                                <i class="bi bi-trash"></i> このステップを削除
-                            </button>
                         </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                <button type="button" class="btn btn-secondary" id="add-step">
-                    <i class="bi bi-plus-lg"></i> ステップを追加
-                </button>
-            </div>
 
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label for="id_status" class="form-label">ステータス</label>
-                    {{ form.status.errors }}
-                    <select class="form-select" id="id_status" name="status">
-                        {% for value, label in form.fields.status.choices %}
-                        <option value="{{ value }}" {% if form.status.value == value %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-6">
-                    <label for="id_priority" class="form-label">優先度</label>
-                    {{ form.priority.errors }}
-                    <select class="form-select" id="id_priority" name="priority">
-                        {% for value, label in form.fields.priority.choices %}
-                        <option value="{{ value }}" {% if form.priority.value == value %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
+                        <div class="d-grid gap-2">
+                            <div class="row g-2">
+                                <div class="col">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="bi bi-save"></i> 保存
+                                    </button>
+                                </div>
+                                {% if form.instance.pk %}
+                                <div class="col">
+                                    <a href="{% url 'case_delete' form.instance.pk %}" class="btn btn-danger w-100">
+                                        <i class="bi bi-trash"></i> 削除
+                                    </a>
+                                </div>
+                                <div class="col">
+                                    <a href="{% url 'case_detail' form.instance.pk %}" class="btn btn-secondary w-100">
+                                        <i class="bi bi-x-circle"></i> キャンセル
+                                    </a>
+                                </div>
+                                {% else %}
+                                <div class="col">
+                                    <a href="{% url 'suite_detail' view.kwargs.suite_pk %}" class="btn btn-secondary w-100">
+                                        <i class="bi bi-x-circle"></i> キャンセル
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
-
-            <div class="d-flex justify-content-between">
-                <a href="{% if form.instance.pk %}{% url 'case_detail' form.instance.pk %}{% else %}{% url 'suite_detail' view.kwargs.suite_pk %}{% endif %}" class="btn btn-secondary">
-                    キャンセル
-                </a>
-                <button type="submit" class="btn btn-primary">
-                    {% if form.instance.pk %}更新{% else %}作成{% endif %}
-                </button>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
-
-{% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const testSteps = document.getElementById('test-steps');
-    const addStepButton = document.getElementById('add-step');
-    const totalFormsInput = document.getElementById('id_steps-TOTAL_FORMS');
-    const emptyFormTemplate = document.getElementById('empty-form-template');
-    
-    function updateStepOrders() {
-        const steps = testSteps.querySelectorAll('.test-step:not([style*="display: none"])');
-        steps.forEach((step, index) => {
-            const orderInput = step.querySelector('input[name$="-order"]');
-            if (orderInput) {
-                orderInput.value = index;
-            }
-        });
-    }
-
-    function setupDeleteButtons() {
-        const deleteButtons = document.querySelectorAll('.delete-step');
-        deleteButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const stepCard = this.closest('.test-step');
-                const deleteCheckbox = stepCard.querySelector('input[name$="-DELETE"]');
-                if (deleteCheckbox) {
-                    deleteCheckbox.checked = true;
-                    stepCard.style.display = 'none';
-                } else {
-                    stepCard.remove();
-                }
-                updateTotalForms();
-                updateStepOrders();
-            });
-        });
-    }
-
-    function updateTotalForms() {
-        const visibleSteps = testSteps.querySelectorAll('.test-step:not([style*="display: none"])');
-        totalFormsInput.value = visibleSteps.length;
-    }
-
-    addStepButton.addEventListener('click', function() {
-        const steps = testSteps.querySelectorAll('.test-step:not([style*="display: none"])');
-        const newIndex = steps.length;
-        
-        let template;
-        if (steps.length > 0) {
-            template = steps[0].cloneNode(true);
-            template.querySelectorAll('input, textarea').forEach(element => {
-                element.value = '';
-                if (element.name) {
-                    element.name = element.name.replace(/-\d+-/, `-${newIndex}-`);
-                    element.id = element.id.replace(/-\d+-/, `-${newIndex}-`);
-                }
-            });
-        } else {
-            template = emptyFormTemplate.cloneNode(true);
-            template.style.display = '';
-            template.id = '';
-            template.querySelectorAll('input, textarea').forEach(element => {
-                if (element.name) {
-                    element.name = element.name.replace('__prefix__', newIndex.toString());
-                    element.id = element.id.replace('__prefix__', newIndex.toString());
-                }
-            });
-        }
-
-        testSteps.appendChild(template);
-        updateStepOrders();
-        updateTotalForms();
-        setupDeleteButtons();
-    });
-
-    // 初期状態でステップがない場合は、1つ追加する
-    if (testSteps.querySelectorAll('.test-step:not([style*="display: none"])').length === 0) {
-        addStepButton.click();
-    }
-
-    setupDeleteButtons();
-    updateStepOrders();
-});
-</script>
 {% endblock %}

@@ -1,0 +1,48 @@
+{% extends 'test_tracking/base.html' %}
+
+{% block content %}
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <h1>管理者ダッシュボード</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">CSVデータ管理</h5>
+                <p class="card-text">CSVファイルを使用してテストデータをインポート・エクスポートします。</p>
+                <a href="{% url 'csv_management' %}" class="btn btn-primary">
+                    <i class="bi bi-file-earmark-spreadsheet"></i> CSVデータ管理
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">テストケース管理</h5>
+                <p class="card-text">全プロジェクトのテストケースを一覧表示・管理します。</p>
+                <a href="{% url 'case_list' %}" class="btn btn-primary">
+                    <i class="bi bi-list-check"></i> テストケース一覧
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Django管理サイト</h5>
+                <p class="card-text">Djangoの管理サイトでデータを直接編集します。</p>
+                <a href="{% url 'admin:index' %}" class="btn btn-secondary" target="_blank">
+                    <i class="bi bi-gear"></i> Django管理サイト
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -4,14 +4,26 @@
 <div class="mb-4">
     <div class="d-flex justify-content-between align-items-center">
         <h1>{{ test_run.name }}</h1>
-        <span class="badge {% if test_run.completed_at %}bg-success{% else %}bg-warning{% endif %} fs-5">
-            {{ test_run.completed_at|yesno:"完了,実行中" }}
-        </span>
+        <div class="d-flex align-items-center gap-3">
+            {% if not test_run.completed_at %}
+            <a href="{% url 'test_run_execute' test_run.id %}" class="btn btn-primary">
+                <i class="bi bi-play-fill"></i> テスト実行を再開
+            </a>
+            {% endif %}
+            <span class="badge {% if test_run.completed_at %}bg-success{% else %}bg-warning{% endif %} fs-5">
+                {{ test_run.completed_at|yesno:"完了,実行中" }}
+            </span>
+        </div>
     </div>
     <p class="text-muted">
-        スイート: <a href="{% url 'suite_detail' test_run.suite.id %}">{{ test_run.suite.name }}</a> |
         実行者: {{ test_run.executed_by }} |
         環境: {{ test_run.environment }}
+    </p>
+    <p class="text-muted">
+        スイート:
+        {% for suite in test_run.available_suites.all %}
+            <a href="{% url 'suite_detail' suite.id %}">{{ suite.name }}</a>{% if not forloop.last %}, {% endif %}
+        {% endfor %}
     </p>
     <p class="text-muted">
         開始: {{ test_run.started_at|date:"Y/m/d H:i" }}

@@ -61,7 +61,6 @@
                                     <i class="bi bi-plus-lg"></i> テストケース追加
                                 </a>
                                 <a href="{% url 'suite_update' suite.pk %}" class="btn btn-secondary btn-sm">編集</a>
-                                <a href="{% url 'suite_delete' suite.pk %}" class="btn btn-danger btn-sm">削除</a>
                                 {% endif %}
                             </div>
                         </div>
@@ -86,12 +85,8 @@
                                     </div>
                                     <div class="btn-group">
                                         <a href="{% url 'case_detail' case.pk %}" class="btn btn-primary btn-sm">詳細</a>
-                                        {% if "execute_tests" in project_perms %}
-                                        <a href="{% url 'execution_create' case.pk %}" class="btn btn-success btn-sm">実行</a>
-                                        {% endif %}
                                         {% if "edit_tests" in project_perms %}
                                         <a href="{% url 'case_update' case.pk %}" class="btn btn-secondary btn-sm">編集</a>
-                                        <a href="{% url 'case_delete' case.pk %}" class="btn btn-danger btn-sm">削除</a>
                                         {% endif %}
                                     </div>
                                 </div>

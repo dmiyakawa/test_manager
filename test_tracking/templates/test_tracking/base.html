@@ -16,21 +16,57 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'case_list' %}">全テストケース</a>
-                    </li>
                 </ul>
                 <ul class="navbar-nav">
-                    {% if user.is_superuser %}
+                    {% if not user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'csv_management' %}">
-                            <i class="bi bi-file-earmark-text"></i> CSV管理
+                        <a class="nav-link" href="{% url 'login' %}">
+                            <i class="bi bi-box-arrow-in-right"></i> ログイン
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/admin/" target="_blank">
-                            <i class="bi bi-gear-fill"></i> 管理画面
+                    {% else %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i> {{ user.username }}
                         </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            {% if user.is_superuser %}
+                            <li>
+                                <a class="dropdown-item" href="{% url 'admin_dashboard' %}">
+                                    <i class="bi bi-speedometer2"></i> 管理者ダッシュボード
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'csv_management' %}">
+                                    <i class="bi bi-file-earmark-text"></i> CSVデータ管理
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'case_list' %}">
+                                    <i class="bi bi-list-check"></i> テストケース一覧
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'test_run_list' %}">
+                                    <i class="bi bi-play-circle"></i> テストラン一覧
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="/admin/" target="_blank">
+                                    <i class="bi bi-gear-fill"></i> Django管理サイト
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                            <li>
+                                <form method="post" action="{% url 'logout' %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="dropdown-item">
+                                        <i class="bi bi-box-arrow-right"></i> ログアウト
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
                     </li>
                     {% endif %}
                 </ul>

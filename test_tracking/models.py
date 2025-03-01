@@ -3,7 +3,7 @@ from django.utils import timezone
 
 
 class Project(models.Model):
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, unique=True)
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
@@ -27,6 +27,9 @@ class TestSuite(models.Model):
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ["project", "name"]
 
     def __str__(self):
         return self.name
@@ -76,6 +79,9 @@ class TestCase(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        unique_together = ["suite", "title"]
+
     def __str__(self):
         return self.title
 
@@ -89,8 +95,8 @@ class TestRun(models.Model):
     )
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
-    executed_by = models.CharField(max_length=100)
-    environment = models.CharField(max_length=200)
+    executed_by = models.CharField(max_length=100, blank=True)
+    environment = models.CharField(max_length=200, blank=True)
     started_at = models.DateTimeField(default=timezone.now)
     completed_at = models.DateTimeField(null=True, blank=True)
     available_suites = models.ManyToManyField(
@@ -106,9 +112,16 @@ class TestRun(models.Model):
         self.completed_at = timezone.now()
         self.save()
 
-    def get_available_cases(self):
+    def get_available_cases(self) -> TestCase:
         """このテスト実行で選択可能なすべてのテストケースを返す"""
         return TestCase.objects.filter(suite__in=self.available_suites.all())
+
+    def get_available_cases_and_executions(self):
+        ret = []
+        for test_case in TestCase.objects.filter(suite__in=self.available_suites.all()):
+            execution = TestExecution.objects.filter(test_run=self, test_case=test_case).first()
+            ret.append((test_case, execution))
+        return ret
 
 
 class TestExecution(models.Model):

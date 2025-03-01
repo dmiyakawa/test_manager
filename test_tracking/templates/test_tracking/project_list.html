@@ -1,4 +1,5 @@
 {% extends 'test_tracking/base.html' %}
+{% load test_tracking_extras %}
 
 {% block content %}
 <div class="mb-4">
@@ -12,7 +13,7 @@
     </div>
 </div>
 
-<div class="row">
+<div class="row mb-5">
     {% for project in projects %}
     <div class="col-md-6 mb-4">
         <div class="card h-100">
@@ -60,5 +61,71 @@
         </div>
     </div>
     {% endfor %}
+</div>
+
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <h2>テスト実行一覧</h2>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>プロジェクト</th>
+                        <th>テスト実行</th>
+                        <th>進捗</th>
+                        <th>状態</th>
+                        <th>開始日時</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for test_run in test_runs %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'project_detail' test_run.project.id %}">{{ test_run.project.name }}</a>
+                        </td>
+                        <td>
+                            <a href="{% url 'test_run_detail' test_run.id %}">{{ test_run.name }}</a>
+                        </td>
+                        <td>
+                            {% with execution_count=test_run.executions.count %}
+                            {% with total_count=test_run.get_available_cases.count %}
+                            {% if total_count > 0 %}
+                            {{ execution_count }}/{{ total_count }}
+                            ({{ execution_count|multiply:100|divide:total_count }}%)
+                            {% else %}
+                            0/0 (0%)
+                            {% endif %}
+                            {% endwith %}
+                            {% endwith %}
+                        </td>
+                        <td>
+                            <span class="badge {% if test_run.completed_at %}bg-success{% else %}bg-warning{% endif %}">
+                                {{ test_run.completed_at|yesno:"完了,実行中" }}
+                            </span>
+                        </td>
+                        <td>{{ test_run.started_at|date:"Y/m/d H:i" }}</td>
+                        <td>
+                            {% if not test_run.completed_at %}
+                            <a href="{% url 'test_run_execute' test_run.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-play-fill"></i> 実行
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center">テスト実行がありません。</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 {% endblock %}

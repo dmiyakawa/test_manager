@@ -1,14 +1,24 @@
 {% extends 'test_tracking/base.html' %}
+{% load static %}
 
 {% block content %}
 <div class="mb-4">
-    <h1>テスト実行セッションの作成</h1>
-    <h4 class="text-muted">{{ project.name }}</h4>
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1>テスト実行セッションの作成</h1>
+            <h4 class="text-muted mb-0">{{ project.name }}</h4>
+        </div>
+        <div>
+            <button type="submit" form="test-run-form" class="btn btn-primary" id="start-test-run-top" disabled>
+                <i class="bi bi-play-fill"></i> テスト実行を開始
+            </button>
+        </div>
+    </div>
 </div>
 
 <div class="card mb-4">
     <div class="card-body">
-        <form method="post">
+        <form method="post" id="test-run-form">
             {% csrf_token %}
             <div class="mb-3">
                 <label for="id_name" class="form-label">セッション名</label>
@@ -22,65 +32,48 @@
 
             <div class="mb-3">
                 <label for="id_executed_by" class="form-label">実行者</label>
-                <input type="text" class="form-control" id="id_executed_by" name="executed_by" required>
+                <input type="text" class="form-control" id="id_executed_by" name="executed_by">
             </div>
 
             <div class="mb-3">
                 <label for="id_environment" class="form-label">実行環境</label>
-                <input type="text" class="form-control" id="id_environment" name="environment" required>
+                <input type="text" class="form-control" id="id_environment" name="environment">
             </div>
 
-            <h5 class="mt-4 mb-3">テストスイートの選択</h5>
-            <div class="mb-4">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>
-                                    <input type="checkbox" id="select-all-suites" class="form-check-input">
-                                </th>
-                                <th>スイート名</th>
-                                <th>テストケース数</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for suite in project.test_suites.all %}
-                            <tr>
-                                <td>
-                                    <input type="checkbox" name="selected_suites" value="{{ suite.id }}" class="form-check-input suite-checkbox" data-suite-id="{{ suite.id }}">
-                                </td>
-                                <td>{{ suite.name }}</td>
-                                <td>{{ suite.test_cases.count }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <h5 class="mt-4 mb-3">実行するテストケース</h5>
+            <h5 class="mt-4 mb-3">テストスイートとケースの選択</h5>
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th>
-                                <input type="checkbox" id="select-all-cases" class="form-check-input">
-                            </th>
-                            <th>スイート</th>
-                            <th>タイトル</th>
-                            <th>優先度</th>
-                            <th>ステータス</th>
+                            <th style="width: 40px"></th>
+                            <th>スイート / テストケース</th>
+                            <th style="width: 100px">優先度</th>
+                            <th style="width: 100px">ステータス</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for suite in project.test_suites.all %}
-                        {% for case in suite.test_cases.all %}
-                        <tr class="test-case-row" data-suite-id="{{ suite.id }}">
+                        <tr class="table-light">
                             <td>
+                                <input type="checkbox" name="selected_suites" value="{{ suite.id }}" class="form-check-input suite-checkbox" data-suite-id="{{ suite.id }}">
+                            </td>
+                            <td>
+                                <i class="bi bi-folder-fill text-warning me-2"></i>
+                                <strong>{{ suite.name }}</strong>
+                                <span class="text-muted ms-2">({{ suite.test_cases.count }}件)</span>
+                            </td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        {% for case in suite.test_cases.all %}
+                        <tr class="test-case-row" data-suite-id="{{ suite.id }}" style="background-color: #f8f9fa">
+                            <td class="ps-4">
                                 <input type="checkbox" name="selected_cases" value="{{ case.id }}" class="form-check-input test-case-checkbox" data-suite-id="{{ suite.id }}">
                             </td>
-                            <td>{{ suite.name }}</td>
-                            <td>{{ case.title }}</td>
+                            <td class="ps-4">
+                                <i class="bi bi-file-text me-2"></i>
+                                {{ case.title }}
+                            </td>
                             <td>
                                 <span class="badge {% if case.priority == 'HIGH' %}bg-danger{% elif case.priority == 'MEDIUM' %}bg-warning{% else %}bg-info{% endif %}">
                                     {{ case.get_priority_display }}
@@ -100,65 +93,11 @@
 
             <div class="d-flex justify-content-between mt-4">
                 <a href="{% url 'project_detail' project.pk %}" class="btn btn-secondary">キャンセル</a>
-                <button type="submit" class="btn btn-primary">テスト実行を開始</button>
+                <button type="submit" class="btn btn-primary" id="start-test-run-bottom" disabled>テスト実行を開始</button>
             </div>
         </form>
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const selectAllSuites = document.getElementById('select-all-suites');
-    const selectAllCases = document.getElementById('select-all-cases');
-    const suiteCheckboxes = document.getElementsByClassName('suite-checkbox');
-    const caseCheckboxes = document.getElementsByClassName('test-case-checkbox');
-    const caseRows = document.getElementsByClassName('test-case-row');
-
-    // スイート全選択の処理
-    selectAllSuites.addEventListener('change', function() {
-        for (let checkbox of suiteCheckboxes) {
-            checkbox.checked = this.checked;
-            updateTestCaseVisibility(checkbox.dataset.suiteId, this.checked);
-        }
-    });
-
-    // テストケース全選択の処理
-    selectAllCases.addEventListener('change', function() {
-        const visibleCases = Array.from(caseCheckboxes).filter(checkbox => {
-            const row = checkbox.closest('.test-case-row');
-            return row.style.display !== 'none';
-        });
-        visibleCases.forEach(checkbox => checkbox.checked = this.checked);
-    });
-
-    // 個別のスイート選択の処理
-    for (let checkbox of suiteCheckboxes) {
-        checkbox.addEventListener('change', function() {
-            updateTestCaseVisibility(this.dataset.suiteId, this.checked);
-            
-            // 全選択チェックボックスの状態を更新
-            const allChecked = Array.from(suiteCheckboxes).every(cb => cb.checked);
-            selectAllSuites.checked = allChecked;
-        });
-    }
-
-    // テストケースの表示/非表示を更新する関数
-    function updateTestCaseVisibility(suiteId, show) {
-        for (let row of caseRows) {
-            if (row.dataset.suiteId === suiteId) {
-                row.style.display = show ? '' : 'none';
-                if (!show) {
-                    const checkbox = row.querySelector('.test-case-checkbox');
-                    if (checkbox) checkbox.checked = false;
-                }
-            }
-        }
-    }
-
-    // 初期状態ではすべてのテストケースを表示
-    for (let suite of suiteCheckboxes) {
-        suite.checked = true;
-    }
-});
-</script>
+<script src="{% static 'test_tracking/js/test_run_form.js' %}"></script>
 {% endblock %}

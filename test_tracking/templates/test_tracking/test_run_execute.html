@@ -5,7 +5,9 @@
     <h1>テスト実行</h1>
     <h4 class="text-muted">{{ test_run.name }}</h4>
     <p>
+        {% if current_case %}
         スイート: {{ current_case.suite.name }} |
+        {% endif %}
         実行者: {{ test_run.executed_by }} |
         環境: {{ test_run.environment }}
     </p>
@@ -20,7 +22,10 @@
 {% if current_case %}
 <div class="card mb-4">
     <div class="card-header">
-        <h5 class="card-title mb-0">{{ current_case.title }}</h5>
+        <h5 class="card-title mb-0">
+            <a href="{% url 'case_detail' current_case.id %}" class="link-primary" target="_blank">#{{ current_case.id }}</a>
+            {{ current_case.title }}
+        </h5>
     </div>
     <div class="card-body">
         <div class="row mb-4">
@@ -36,7 +41,18 @@
 
         <h6>テストステップ</h6>
         <div class="mb-4">
-            {{ current_case.steps|linebreaks }}
+            {% for step in current_case.steps.all %}
+            <div class="mb-3">
+                <div class="fw-bold">ステップ {{ step.order }}</div>
+                <div class="mb-2">{{ step.description|linebreaks }}</div>
+                <div class="text-muted">
+                    <small>期待される結果:</small><br>
+                    {{ step.expected_result|linebreaks }}
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-muted">テストステップが定義されていません。</p>
+            {% endfor %}
         </div>
 
         <form method="post">
@@ -71,7 +87,9 @@
             </div>
 
             <div class="d-flex justify-content-between">
-                <a href="{% url 'suite_detail' current_case.suite.id %}" class="btn btn-secondary" onclick="return confirm('テスト実行を中断してもよろしいですか？')">中断</a>
+                {% if current_case %}
+                <a href="{% url 'project_detail' test_run.project.id %}" class="btn btn-secondary" onclick="return confirm('テスト実行を中断してもよろしいですか？')">中断</a>
+                {% endif %}
                 <button type="submit" class="btn btn-primary">次へ</button>
             </div>
         </form>
@@ -92,7 +110,7 @@
 
 <div class="card mt-4">
     <div class="card-header">
-        <h5 class="card-title mb-0">実行済みテストケース</h5>
+        <h5 class="card-title mb-0">テストケース一覧</h5>
     </div>
     <div class="card-body">
         <div class="table-responsive">
@@ -100,21 +118,44 @@
                 <thead>
                     <tr>
                         <th>テストケース</th>
-                        <th>結果</th>
+                        <th>状態</th>
                         <th>備考</th>
+                        <th>操作</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for execution in test_run.executions.all %}
+                    {% for tup in test_run.get_available_cases_and_executions %}
+                    {% with tup.0 as case %}
+                    {% with tup.1 as execution %}
                     <tr>
-                        <td>{{ execution.test_case.title }}</td>
                         <td>
+                            <a href="{% url 'case_detail' case.id %}" class="link-primary" target="_blank">#{{ case.id }}</a>
+                            {{ case.title }}
+                        </td>
+                        <td>
+                            {% if execution %}
                             <span class="badge {% if execution.result == 'PASS' %}bg-success{% elif execution.result == 'FAIL' %}bg-danger{% elif execution.result == 'BLOCKED' %}bg-warning{% else %}bg-secondary{% endif %}">
                                 {{ execution.get_result_display }}
                             </span>
+                            {% else %}
+                            <span class="badge bg-light text-dark">未実行</span>
+                            {% endif %}
                         </td>
-                        <td>{{ execution.notes|truncatewords:10 }}</td>
+                        <td>{{ execution.notes|default:"-"|truncatewords:10 }}</td>
+                        <td>
+                            {% if not execution or execution.result == 'SKIPPED' %}
+                            <form method="post" action="{% url 'test_run_execute' test_run.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="test_case_id" value="{{ case.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-play-fill"></i> 実行
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
                     </tr>
+                    {% endwith %}
+                    {% endwith %}
                     {% endfor %}
                 </tbody>
             </table>

@@ -35,3 +35,8 @@ def filter_by(queryset, expr):
         return queryset.filter(**{key: value})
     except (ValueError, TypeError):
         return []
+
+
+@register.simple_tag
+def define(val=None):
+  return val

@@ -21,11 +21,11 @@ class TestCSVViews:
     @pytest.fixture
     def csv_data(self):
         data = [
-            ["type", "id", "parent_id", "name", "description", "prerequisites", "status", "priority", "expected_result"],
-            ["project", "1", "", "Test Project", "Test Description", "", "", "", ""],
-            ["suite", "1", "1", "Test Suite", "Test Suite Description", "", "", "", ""],
-            ["case", "1", "1", "Test Case", "Test Description", "", "ACTIVE", "HIGH", ""],
-            ["step", "1", "1", "1", "Test Step", "", "", "", "Expected Result"]
+            ["project_name", "type", "parent", "name", "description", "order", "status", "priority", "prerequisites", "expected_result"],
+            ["Test Project", "project", "", "Test Project", "Test Description", "", "", "", "", ""],
+            ["Test Project", "suite", "Test Project", "Test Suite", "Test Suite Description", "", "", "", "", ""],
+            ["Test Project", "case", "Test Suite", "Test Case", "Test Description", "", "ACTIVE", "HIGH", "", ""],
+            ["Test Project", "step", "Test Case", "", "Test Step", "1", "", "", "", "Expected Result"]
         ]
         output = io.StringIO()
         writer = csv.writer(output)
@@ -51,16 +51,14 @@ class TestCSVViews:
 
         # テストデータを作成
         project = Project.objects.create(
-            id=1, name="Test Project", description="Test Description"
+            name="Test Project", description="Test Description"
         )
         suite = TestSuite.objects.create(
-            id=1,
             project=project,
             name="Test Suite",
             description="Test Suite Description"
         )
         case = TestCase.objects.create(
-            id=1,
             suite=suite,
             title="Test Case",
             description="Test Description",
@@ -68,7 +66,6 @@ class TestCSVViews:
             priority="HIGH"
         )
         step = TestStep.objects.create(
-            id=1,
             test_case=case,
             order=1,
             description="Test Step",
@@ -77,10 +74,9 @@ class TestCSVViews:
 
         # 別のプロジェクトのデータを作成（エクスポートされないことを確認するため）
         other_project = Project.objects.create(
-            id=2, name="Other Project", description="Other Description"
+            name="Other Project", description="Other Description"
         )
         other_suite = TestSuite.objects.create(
-            id=2,
             project=other_project,
             name="Other Suite",
             description="Other Suite Description"
@@ -109,16 +105,14 @@ class TestCSVViews:
 
         # テストデータを作成
         project = Project.objects.create(
-            id=1, name="Test Project", description="Test Description"
+            name="Test Project", description="Test Description"
         )
         suite = TestSuite.objects.create(
-            id=1,
             project=project,
             name="Test Suite",
             description="Test Suite Description"
         )
         case = TestCase.objects.create(
-            id=1,
             suite=suite,
             title="Test Case",
             description="Test Description",
@@ -126,7 +120,6 @@ class TestCSVViews:
             priority="HIGH"
         )
         step = TestStep.objects.create(
-            id=1,
             test_case=case,
             order=1,
             description="Test Step",
@@ -192,8 +185,8 @@ class TestCSVViews:
         client.login(username="admin", password="adminpass")
         url = reverse("csv_import")
         invalid_data = (
-            b"type,id,parent_id,name,description,prerequisites,status,priority,expected_result\r\n"
-            b"invalid,1,,Test,Test,,,,\r\n"
+            b"project_name,type,parent,name,description,order,status,priority,prerequisites,expected_result\r\n"
+            b"Test Project,invalid,Test,Test,Test,,,,,,\r\n"
         )
         csv_file = SimpleUploadedFile(
             "test_data.csv",
