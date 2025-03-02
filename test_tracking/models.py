@@ -18,6 +18,10 @@ class Project(models.Model):
     def __str__(self):
         return self.name
 
+    def get_total_test_cases(self):
+        """プロジェクト内の全テストケース数を返す"""
+        return TestCase.objects.filter(suite__project=self).count()
+
 
 class TestSuite(models.Model):
     project = models.ForeignKey(

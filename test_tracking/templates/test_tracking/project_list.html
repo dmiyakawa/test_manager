@@ -17,33 +17,26 @@
         <div class="col-md-6 mb-4">
             <div class="card h-100">
                 <div class="card-body">
-                    <h5 class="card-title">
-                        <a href="{% url 'project_detail' project.pk %}" class="text-decoration-none">{{ project.name }}</a>
-                    </h5>
-                    <p class="card-text">{{ project.description|truncatewords:30 }}</p>
-                    <div class="mb-3">
-                        <small class="text-muted">
-                            テストスイート数: {{ project.test_suites.count }} |
-                            作成日: {{ project.created_at|date:"Y/m/d" }}
-                        </small>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            {% if perms.test_tracking.manage_project %}
-                            <span class="badge bg-primary">管理者</span>
-                            {% endif %}
-                            {% if perms.test_tracking.edit_tests %}
-                            <span class="badge bg-success">編集者</span>
-                            {% endif %}
-                            {% if perms.test_tracking.execute_tests %}
-                            <span class="badge bg-info">実行者</span>
-                            {% endif %}
-                        </div>
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h5 class="card-title mb-0">
+                            <a href="{% url 'project_detail' project.pk %}" class="text-decoration-none link-dark">
+                                {{ project.name }}
+                                <i class="bi bi-box-arrow-up-right text-muted small"></i>
+                            </a>
+                        </h5>
                         {% if perms.test_tracking.manage_project %}
                         <a href="{% url 'project_update' project.pk %}" class="btn btn-secondary btn-sm">
                             <i class="bi bi-gear-fill"></i> 設定
                         </a>
                         {% endif %}
+                    </div>
+                    <p class="card-text">{{ project.description|truncatewords:30 }}</p>
+                    <div>
+                        <small class="text-muted">
+                            テストスイート数: {{ project.test_suites.count }} |
+                            テストケース数: {{ project.get_total_test_cases }} |
+                            作成日: {{ project.created_at|date:"Y/m/d" }}
+                        </small>
                     </div>
                 </div>
             </div>
@@ -60,7 +53,14 @@
 
     <div class="mb-4">
         <div class="d-flex justify-content-between align-items-center">
-            <h2>テストセッション一覧</h2>
+            <h2>
+                テストセッション一覧
+                <i class="bi bi-question-circle text-muted" style="font-size: 0.6em; opacity: 0.5; vertical-align: middle; margin-bottom: 0.2em;" 
+                   data-bs-toggle="popover" 
+                   data-bs-placement="right"
+                   data-bs-trigger="hover focus"
+                   data-bs-content="テストセッションは特定のプロジェクトのテストケースを実行する単位です"></i>
+            </h2>
         </div>
     </div>
 
@@ -70,8 +70,8 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>プロジェクト</th>
-                            <th>テストセッション</th>
+                            <th>プロジェクト名</th>
+                            <th>セッション名</th>
                             <th>進捗</th>
                             <th>状態</th>
                             <th>開始日時</th>
@@ -82,10 +82,16 @@
                         {% for test_session in test_sessions %}
                         <tr>
                             <td>
-                                <a href="{% url 'project_detail' test_session.project.id %}">{{ test_session.project.name }}</a>
+                                <a href="{% url 'project_detail' test_session.project.id %}" class="text-decoration-none link-dark">
+                                    {{ test_session.project.name }}
+                                    <i class="bi bi-box-arrow-up-right text-muted small"></i>
+                                </a>
                             </td>
                             <td>
-                                <a href="{% url 'test_session_detail' test_session.id %}">{{ test_session.name }}</a>
+                                <a href="{% url 'test_session_detail' test_session.id %}" class="text-decoration-none link-dark">
+                                    {{ test_session.name }}
+                                    <i class="bi bi-box-arrow-up-right text-muted small"></i>
+                                </a>
                             </td>
                             <td>
                                 {% with execution_count=test_session.executions.count %}
@@ -139,4 +145,13 @@
         </div>
     </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+    [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
+});
+</script>
 {% endblock %}

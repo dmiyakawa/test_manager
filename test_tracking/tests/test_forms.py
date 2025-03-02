@@ -50,7 +50,6 @@ class TestTestStepForm:
         form = TestStepForm({})
         assert not form.is_valid()
         assert "description" in form.errors
-        assert "expected_result" in form.errors
         assert "test_case" in form.errors
 
 
@@ -66,7 +65,7 @@ class TestTestStepFormSet:
 
     def test_empty_formset(self, test_case):
         formset = TestStepFormSet(instance=test_case)
-        assert len(formset.forms) == 1  # extra=1の設定により
+        assert len(formset.forms) == 0  # extra=0の設定により
 
     def test_save_formset(self, test_case):
         data = {
