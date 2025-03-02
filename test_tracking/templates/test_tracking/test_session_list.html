@@ -1,0 +1,58 @@
+{% extends "test_tracking/base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">全テストセッション一覧</h2>
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>プロジェクト</th>
+                    <th>テストセッション名</th>
+                    <th>実行者</th>
+                    <th>開始日時</th>
+                    <th>完了日時</th>
+                    <th>進捗</th>
+                    <th>結果</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for test_session in test_sessions %}
+                <tr>
+                    <td>{{ test_session.project.name }}</td>
+                    <td>{{ test_session.name }}</td>
+                    <td>{{ test_session.executed_by.username }}</td>
+                    <td>{{ test_session.started_at|date:"Y/m/d H:i" }}</td>
+                    <td>{{ test_session.completed_at|date:"Y/m/d H:i"|default:"-" }}</td>
+                    <td>
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" style="width: {{ test_session.pass_percentage }}%;" 
+                                 aria-valuenow="{{ test_session.pass_percentage }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ test_session.pass_percentage }}%
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge bg-success">合格: {{ test_session.pass_count }}</span>
+                        <span class="badge bg-danger">不合格: {{ test_session.fail_count }}</span>
+                        <span class="badge bg-warning text-dark">ブロック: {{ test_session.blocked_count }}</span>
+                        <span class="badge bg-secondary">スキップ: {{ test_session.skipped_count }}</span>
+                    </td>
+                    <td>
+                        <a href="{% url 'test_session_detail' test_session.pk %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i> 詳細
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center">テストセッションがありません</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

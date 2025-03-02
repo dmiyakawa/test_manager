@@ -16,7 +16,7 @@
             {% get_obj_perms user for case.suite.project as "project_perms" %}
             {% if "execute_tests" in project_perms %}
             <a href="{% url 'execution_create' case.pk %}" class="btn btn-success">
-                <i class="bi bi-play-fill"></i> テストイテレーション
+                <i class="bi bi-play-fill"></i> テストセッション
             </a>
             {% endif %}
             {% if "edit_tests" in project_perms %}
@@ -139,7 +139,7 @@
                     {% for execution in executions %}
                     <tr>
                         <td>
-                            <a href="{% url 'test_iteration_detail' execution.test_iteration.pk %}">{{ execution.test_iteration.name }}</a><br>
+                            <a href="{% url 'test_session_detail' execution.test_session.pk %}">{{ execution.test_session.name }}</a><br>
                             <small class="text-muted">{{ execution.executed_at|date:"Y/m/d H:i" }}</small>
                         </td>
                         <td>{{ execution.executed_by }}</td>

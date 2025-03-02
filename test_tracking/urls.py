@@ -67,23 +67,23 @@ urlpatterns = [
         name="execution_create",
     ),
     path(
-        "project/<int:project_pk>/test-iteration/create/",
-        views.TestIterationCreateView.as_view(),
-        name="test_iteration_create",
+        "project/<int:project_pk>/test-session/create/",
+        views.TestSessionCreateView.as_view(),
+        name="test_session_create",
     ),
     path(
-        "test-iteration/<int:pk>/execute/",
-        views.TestIterationExecuteView.as_view(),
-        name="test_iteration_execute",
+        "test-session/<int:pk>/execute/",
+        views.TestSessionExecuteView.as_view(),
+        name="test_session_execute",
     ),
     path(
-        "test-iteration/<int:pk>/",
-        views.TestIterationDetailView.as_view(),
-        name="test_iteration_detail"
+        "test-session/<int:pk>/",
+        views.TestSessionDetailView.as_view(),
+        name="test_session_detail"
     ),
     path(
-        "test-iterations/",
-        views.TestIterationListView.as_view(),
-        name="test_iteration_list"
+        "test-sessions/",
+        views.TestSessionListView.as_view(),
+        name="test_session_list"
     ),
 ]

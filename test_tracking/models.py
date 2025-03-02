@@ -89,9 +89,9 @@ class TestCase(models.Model):
         return self.steps.all()
 
 
-class TestIteration(models.Model):
+class TestSession(models.Model):
     project = models.ForeignKey(
-        Project, on_delete=models.CASCADE, related_name="test_iterations"
+        Project, on_delete=models.CASCADE, related_name="test_sessions"
     )
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
@@ -101,8 +101,8 @@ class TestIteration(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
     available_suites = models.ManyToManyField(
         TestSuite,
-        related_name="available_test_iterations",
-        help_text="このテストイテレーションで選択可能なテストスイート"
+        related_name="available_test_sessions",
+        help_text="このテストセッションで選択可能なテストスイート"
     )
 
     def __str__(self):
@@ -119,7 +119,7 @@ class TestIteration(models.Model):
     def get_available_cases_and_executions(self):
         ret = []
         for test_case in TestCase.objects.filter(suite__in=self.available_suites.all()):
-            execution = TestExecution.objects.filter(test_iteration=self, test_case=test_case).first()
+            execution = TestExecution.objects.filter(test_session=self, test_case=test_case).first()
             ret.append((test_case, execution))
         return ret
 
@@ -135,8 +135,8 @@ class TestExecution(models.Model):
     test_case = models.ForeignKey(
         TestCase, on_delete=models.CASCADE, related_name="executions"
     )
-    test_iteration = models.ForeignKey(
-        TestIteration, on_delete=models.CASCADE, related_name="executions"
+    test_session = models.ForeignKey(
+        TestSession, on_delete=models.CASCADE, related_name="executions"
     )
     executed_by = models.CharField(max_length=100)
     executed_at = models.DateTimeField(default=timezone.now)

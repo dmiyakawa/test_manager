@@ -21,26 +21,27 @@
         <form method="post" id="test-iteration-form">
             {% csrf_token %}
             <div class="mb-3">
-                <label for="id_name" class="form-label">セッション名</label>
+                <label for="id_name" class="form-label">セッション名 <span class="text-danger">*</span></label>
                 <input type="text" class="form-control" id="id_name" name="name" required>
             </div>
 
             <div class="mb-3">
-                <label for="id_description" class="form-label">説明</label>
+                <label for="id_description" class="form-label">説明 <small class="text-muted">(オプション)</small></label>
                 <textarea class="form-control" id="id_description" name="description" rows="3"></textarea>
             </div>
 
             <div class="mb-3">
-                <label for="id_executed_by" class="form-label">実行者</label>
+                <label for="id_executed_by" class="form-label">実行者 <small class="text-muted">(オプション)</small></label>
                 <input type="text" class="form-control" id="id_executed_by" name="executed_by">
             </div>
 
             <div class="mb-3">
-                <label for="id_environment" class="form-label">実行環境</label>
+                <label for="id_environment" class="form-label">実行環境 <small class="text-muted">(オプション)</small></label>
                 <input type="text" class="form-control" id="id_environment" name="environment">
             </div>
 
-            <h5 class="mt-4 mb-3">テストスイートとケースの選択</h5>
+            <h5 class="mt-4 mb-2">テストスイートとケースの選択 <span class="text-danger">*</span></h5>
+            <p class="text-muted mb-3">少なくとも1つのテストケースを選択してください。スイートを選択すると、そのスイートに含まれるすべてのテストケースが選択されます。</p>
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead>

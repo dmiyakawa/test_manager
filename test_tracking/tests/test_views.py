@@ -2,9 +2,31 @@ import pytest
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from guardian.shortcuts import assign_perm
-from test_tracking.models import Project, TestSuite, TestCase, TestStep, TestIteration, TestExecution
+from test_tracking.models import Project, TestSuite, TestCase, TestStep, TestSession, TestExecution
 
 User = get_user_model()
+
+
+@pytest.mark.django_db
+class TestAuthenticationViews:
+    @pytest.mark.parametrize("url_name,kwargs", [
+        ("project_detail", {"pk": 1}),
+        ("suite_detail", {"pk": 1}),
+        ("case_detail", {"pk": 1}),
+        ("test_session_detail", {"pk": 1}),
+        ("test_session_execute", {"pk": 1}),
+        ("case_list", {}),
+    ])
+    def test_login_required(self, client, url_name, kwargs):
+        url = reverse(url_name, kwargs=kwargs)
+        response = client.get(url)
+        assert response.status_code == 302
+        assert response.url.startswith('/accounts/login/')
+
+    def test_project_list_accessible_without_login(self, client):
+        url = reverse("project_list")
+        response = client.get(url)
+        assert response.status_code == 200
 
 
 @pytest.mark.django_db
@@ -162,14 +184,14 @@ class TestCaseViews:
     def test_case_detail_view_with_executions(self, client, user, case):
         client.login(username="testuser", password="testpass")
         # テスト実行を作成
-        test_iteration = TestIteration.objects.create(
+        test_session = TestSession.objects.create(
             project=case.suite.project,
-            name="Test Iteration",
+            name="Test Session",
             executed_by=user,
             environment="Test Environment"
         )
         execution = TestExecution.objects.create(
-            test_iteration=test_iteration,
+            test_session=test_session,
             test_case=case,
             executed_by=user,
             environment="Test Environment",
@@ -180,12 +202,12 @@ class TestCaseViews:
         url = reverse("case_detail", kwargs={"pk": case.pk})
         response = client.get(url)
         assert response.status_code == 200
-        assert "Test Iteration" in str(response.content)
+        assert "Test Session" in str(response.content)
         assert "PASS" in str(response.content)
 
 
 @pytest.mark.django_db
-class TestIterationViews:
+class TestSessionViews:
     @pytest.fixture
     def user(self):
         return User.objects.create_user(
@@ -218,34 +240,34 @@ class TestIterationViews:
         )
 
     @pytest.fixture
-    def test_iteration(self, project, user, suite):
-        test_iteration = TestIteration.objects.create(
+    def test_session(self, project, user, suite):
+        test_session = TestSession.objects.create(
             project=project,
-            name="Test Iteration",
+            name="Test Session",
             executed_by=user,
             environment="Test Environment"
         )
-        test_iteration.available_suites.add(suite)
-        return test_iteration
+        test_session.available_suites.add(suite)
+        return test_session
 
-    def test_test_iteration_execute_view_get(self, client, user, test_iteration, case):
+    def test_test_session_execute_view_get(self, client, user, test_session, case):
         client.login(username="testuser", password="testpass")
         # セッションにテストケースを設定
         session = client.session
         session["selected_cases"] = [str(case.pk)]
         session.save()
 
-        url = reverse("test_iteration_execute", kwargs={"pk": test_iteration.pk})
+        url = reverse("test_session_execute", kwargs={"pk": test_session.pk})
         response = client.get(url)
         assert response.status_code == 200
         assert "Test Case" in str(response.content)
         assert "0/1" in str(response.content)  # 進捗表示（完了数/全体数）
 
-    def test_test_iteration_execute_view_get_completed(self, client, user, test_iteration, case):
+    def test_test_session_execute_view_get_completed(self, client, user, test_session, case):
         client.login(username="testuser", password="testpass")
         # すべてのテストケースを実行済みに
         TestExecution.objects.create(
-            test_iteration=test_iteration,
+            test_session=test_session,
             test_case=case,
             executed_by=user,
             environment="Test Environment",
@@ -255,14 +277,14 @@ class TestIterationViews:
         session["selected_cases"] = [str(case.pk)]
         session.save()
 
-        url = reverse("test_iteration_execute", kwargs={"pk": test_iteration.pk})
+        url = reverse("test_session_execute", kwargs={"pk": test_session.pk})
         response = client.get(url)
         assert response.status_code == 302
-        assert response.url == reverse("test_iteration_detail", kwargs={"pk": test_iteration.pk})
+        assert response.url == reverse("test_session_detail", kwargs={"pk": test_session.pk})
 
-    def test_test_iteration_execute_view_post(self, client, user, test_iteration, case):
+    def test_test_session_execute_view_post(self, client, user, test_session, case):
         client.login(username="testuser", password="testpass")
-        url = reverse("test_iteration_execute", kwargs={"pk": test_iteration.pk})
+        url = reverse("test_session_execute", kwargs={"pk": test_session.pk})
         data = {
             "test_case_id": case.pk,
             "result": "PASS",
@@ -271,20 +293,20 @@ class TestIterationViews:
         }
         response = client.post(url, data)
         assert response.status_code == 302
-        assert TestExecution.objects.filter(test_iteration=test_iteration, test_case=case).exists()
+        assert TestExecution.objects.filter(test_session=test_session, test_case=case).exists()
 
 
 @pytest.mark.django_db
-class TestIterationListView:
+class TestSessionListView:
     @pytest.fixture
     def user(self):
         return User.objects.create_superuser(
             username="admin", email="admin@example.com", password="adminpass"
         )
 
-    def test_iteration_list_view(self, client, user):
+    def test_session_list_view(self, client, user):
         client.login(username="admin", password="adminpass")
-        url = reverse("test_iteration_list")
+        url = reverse("test_session_list")
         response = client.get(url)
         assert response.status_code == 200
         # 「テスト実行」という文字列が含まれていないことを確認

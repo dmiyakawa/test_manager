@@ -2,130 +2,143 @@
 {% load test_tracking_extras %}
 
 {% block content %}
-<div class="mb-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <h1>プロジェクト一覧</h1>
-        {% if user.is_authenticated %}
-        <a href="{% url 'project_create' %}" class="btn btn-primary">
-            <i class="bi bi-plus-lg"></i> 新規プロジェクト作成
-        </a>
-        {% endif %}
+{% if user.is_authenticated %}
+    <div class="mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1>プロジェクト一覧</h1>
+            <a href="{% url 'project_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> 新規プロジェクト作成
+            </a>
+        </div>
     </div>
-</div>
 
-<div class="row mb-5">
-    {% for project in projects %}
-    <div class="col-md-6 mb-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title">
-                    <a href="{% url 'project_detail' project.pk %}" class="text-decoration-none">{{ project.name }}</a>
-                </h5>
-                <p class="card-text">{{ project.description|truncatewords:30 }}</p>
-                <div class="mb-3">
-                    <small class="text-muted">
-                        テストスイート数: {{ project.test_suites.count }} |
-                        作成日: {{ project.created_at|date:"Y/m/d" }}
-                    </small>
-                </div>
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        {% load guardian_tags %}
-                        {% get_obj_perms user for project as "project_perms" %}
+    <div class="row mb-5">
+        {% for project in projects %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <a href="{% url 'project_detail' project.pk %}" class="text-decoration-none">{{ project.name }}</a>
+                    </h5>
+                    <p class="card-text">{{ project.description|truncatewords:30 }}</p>
+                    <div class="mb-3">
+                        <small class="text-muted">
+                            テストスイート数: {{ project.test_suites.count }} |
+                            作成日: {{ project.created_at|date:"Y/m/d" }}
+                        </small>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            {% load guardian_tags %}
+                            {% get_obj_perms user for project as "project_perms" %}
+                            {% if "manage_project" in project_perms %}
+                            <span class="badge bg-primary">管理者</span>
+                            {% endif %}
+                            {% if "edit_tests" in project_perms %}
+                            <span class="badge bg-success">編集者</span>
+                            {% endif %}
+                            {% if "execute_tests" in project_perms %}
+                            <span class="badge bg-info">実行者</span>
+                            {% endif %}
+                        </div>
                         {% if "manage_project" in project_perms %}
-                        <span class="badge bg-primary">管理者</span>
-                        {% endif %}
-                        {% if "edit_tests" in project_perms %}
-                        <span class="badge bg-success">編集者</span>
-                        {% endif %}
-                        {% if "execute_tests" in project_perms %}
-                        <span class="badge bg-info">実行者</span>
+                        <a href="{% url 'project_update' project.pk %}" class="btn btn-secondary btn-sm">
+                            <i class="bi bi-gear-fill"></i> 設定
+                        </a>
                         {% endif %}
                     </div>
-                    {% if "manage_project" in project_perms %}
-                    <a href="{% url 'project_update' project.pk %}" class="btn btn-secondary btn-sm">
-                        <i class="bi bi-gear-fill"></i> 設定
-                    </a>
-                    {% endif %}
                 </div>
             </div>
         </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                プロジェクトがまだ登録されていません。
+                <a href="{% url 'project_create' %}" class="alert-link">新規プロジェクトを作成</a>してください。
+            </div>
+        </div>
+        {% endfor %}
     </div>
-    {% empty %}
-    <div class="col-12">
-        <div class="alert alert-info">
-            プロジェクトがまだ登録されていません。
-            {% if user.is_authenticated %}
-            <a href="{% url 'project_create' %}" class="alert-link">新規プロジェクトを作成</a>してください。
-            {% endif %}
+
+    <div class="mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2>テストイテレーション一覧</h2>
         </div>
     </div>
-    {% endfor %}
-</div>
 
-<div class="mb-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <h2>テストイテレーション一覧</h2>
-    </div>
-</div>
-
-<div class="card">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>プロジェクト</th>
-                        <th>テストイテレーション</th>
-                        <th>進捗</th>
-                        <th>状態</th>
-                        <th>開始日時</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for test_iteration in test_iterations %}
-                    <tr>
-                        <td>
-                            <a href="{% url 'project_detail' test_iteration.project.id %}">{{ test_iteration.project.name }}</a>
-                        </td>
-                        <td>
-                            <a href="{% url 'test_iteration_detail' test_iteration.id %}">{{ test_iteration.name }}</a>
-                        </td>
-                        <td>
-                            {% with execution_count=test_iteration.executions.count %}
-                            {% with total_count=test_iteration.get_available_cases.count %}
-                            {% if total_count > 0 %}
-                            {{ execution_count }}/{{ total_count }}
-                            ({{ execution_count|multiply:100|divide:total_count }}%)
-                            {% else %}
-                            0/0 (0%)
-                            {% endif %}
-                            {% endwith %}
-                            {% endwith %}
-                        </td>
-                        <td>
-                            <span class="badge {% if test_iteration.completed_at %}bg-success{% else %}bg-warning{% endif %}">
-                                {{ test_iteration.completed_at|yesno:"完了,実行中" }}
-                            </span>
-                        </td>
-                        <td>{{ test_iteration.started_at|date:"Y/m/d H:i" }}</td>
-                        <td>
-                            {% if not test_iteration.completed_at %}
-                            <a href="{% url 'test_iteration_execute' test_iteration.id %}" class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-play-fill"></i> 実行
-                            </a>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="6" class="text-center">テストイテレーションがありません。</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>プロジェクト</th>
+                            <th>テストイテレーション</th>
+                            <th>進捗</th>
+                            <th>状態</th>
+                            <th>開始日時</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for test_iteration in test_iterations %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'project_detail' test_iteration.project.id %}">{{ test_iteration.project.name }}</a>
+                            </td>
+                            <td>
+                                <a href="{% url 'test_iteration_detail' test_iteration.id %}">{{ test_iteration.name }}</a>
+                            </td>
+                            <td>
+                                {% with execution_count=test_iteration.executions.count %}
+                                {% with total_count=test_iteration.get_available_cases.count %}
+                                {% if total_count > 0 %}
+                                {{ execution_count }}/{{ total_count }}
+                                ({{ execution_count|multiply:100|divide:total_count }}%)
+                                {% else %}
+                                0/0 (0%)
+                                {% endif %}
+                                {% endwith %}
+                                {% endwith %}
+                            </td>
+                            <td>
+                                <span class="badge {% if test_iteration.completed_at %}bg-success{% else %}bg-warning{% endif %}">
+                                    {{ test_iteration.completed_at|yesno:"完了,実行中" }}
+                                </span>
+                            </td>
+                            <td>{{ test_iteration.started_at|date:"Y/m/d H:i" }}</td>
+                            <td>
+                                {% if not test_iteration.completed_at %}
+                                <a href="{% url 'test_iteration_execute' test_iteration.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-play-fill"></i> 実行
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">テストイテレーションがありません。</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-</div>
+{% else %}
+    <div class="container">
+        <div class="row justify-content-center align-items-center" style="min-height: 70vh;">
+            <div class="col-md-8 text-center">
+                <h1 class="display-4 mb-4">テスト管理システム</h1>
+                <p class="lead mb-5">
+                    プロジェクトごとのテストケースを管理し、テスト実行を効率的に追跡するためのシステムです。<br>
+                    テストの計画、実行、結果の記録を一元管理できます。
+                </p>
+                <a href="{% url 'login' %}" class="btn btn-primary btn-lg">
+                    <i class="bi bi-box-arrow-in-right"></i> ログイン
+                </a>
+            </div>
+        </div>
+    </div>
+{% endif %}
 {% endblock %}
