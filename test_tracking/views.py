@@ -483,6 +483,41 @@ class TestCaseListView(LoginRequiredMixin, ListView):
     context_object_name = "cases"
 
 
+class TestStepListView(TestEditorRequired, View):
+    """TestCaseのTestStepを一覧で表示しつつ編集する画面"""
+
+    template_name = "test_tracking/step_list.html"
+
+    def get(self, request, case_pk):
+        test_case = get_object_or_404(TestCase, pk=case_pk)
+        # steps = test_case.get_ordered_steps()
+        formset = TestStepFormSet(instance=test_case, prefix="steps")
+        _logger.debug(f"GET. formset: {len(formset)}")
+        return render(request, self.template_name, {
+            "test_case": test_case,
+            "formset": formset
+        })
+
+    def post(self, request, case_pk):
+        test_case = get_object_or_404(TestCase, pk=case_pk)
+        formset = TestStepFormSet(request.POST, instance=test_case, prefix="steps")
+        _logger.debug(f"POST. formset: {len(formset)}, is_valid: {formset.is_valid()}")
+        if formset.is_valid():
+            formset.save()
+            messages.success(request, "テストステップを更新しました")
+            return redirect("case_detail", pk=case_pk)
+        else:
+            for error in  formset.errors:
+                messages.warning(request, f"{error}")
+        return render(request, self.template_name, {
+            "test_case": test_case,
+            "formset": formset
+        })
+
+    def get_permission_object(self):
+        return get_object_or_404(TestCase, pk=self.kwargs["case_pk"]).suite.project
+
+
 class TestCaseDetailView(LoginRequiredMixin, DetailView):
     model = TestCase
     template_name = "test_tracking/case_detail.html"

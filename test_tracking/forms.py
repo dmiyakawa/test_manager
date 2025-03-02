@@ -33,12 +33,17 @@ class TestSuiteForm(forms.ModelForm):
 class TestStepForm(forms.ModelForm):
     class Meta:
         model = TestStep
-        fields = ["order", "description", "expected_result"]
-        widgets = {"order": forms.HiddenInput()}
+        fields = ["order", "description", "expected_result", "test_case"]
+        widgets = {
+            "order": forms.HiddenInput(),
+            "test_case": forms.HiddenInput(),
+            # "description": forms.Textarea(attrs={'rows':8, 'cols':50}),
+            # "expected_result": forms.Textarea(attrs={'rows':8, 'cols':50}),
+        }
 
 
 TestStepFormSet = inlineformset_factory(
-    TestCase, TestStep, form=TestStepForm, extra=1, can_delete=True
+    TestCase, TestStep, form=TestStepForm, extra=0, can_delete=True
 )
 
 

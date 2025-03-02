@@ -56,6 +56,7 @@ urlpatterns = [
         name="case_create",
     ),
     path("case/<int:pk>/", views.TestCaseDetailView.as_view(), name="case_detail"),
+    path("case/<int:case_pk>/steps/", views.TestStepListView.as_view(), name="step_list"),
     path("case/<int:pk>/edit/", views.TestCaseUpdateView.as_view(), name="case_update"),
     path(
         "case/<int:pk>/delete/", views.TestCaseDeleteView.as_view(), name="case_delete"

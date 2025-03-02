@@ -41,7 +41,7 @@ class TestStep(models.Model):
     )
     order = models.PositiveIntegerField()
     description = models.TextField(help_text="実行する操作の内容")
-    expected_result = models.TextField(help_text="この操作で期待される結果")
+    expected_result = models.TextField(help_text="この操作で期待される結果", blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 

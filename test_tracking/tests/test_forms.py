@@ -27,12 +27,21 @@ class TestProjectForm:
 
 @pytest.mark.django_db
 class TestTestStepForm:
-    def test_valid_form(self):
+    @pytest.fixture
+    def test_case(self):
+        project = Project.objects.create(name="テストプロジェクト")
+        suite = project.test_suites.create(name="テストスイート")
+        return TestCase.objects.create(
+            suite=suite, title="ログインテスト", status="ACTIVE", priority="HIGH"
+        )
+
+    def test_valid_form(self, test_case):
         form = TestStepForm(
             {
                 "order": 1,
                 "description": "ログインボタンをクリック",
                 "expected_result": "ログインフォームが表示される",
+                "test_case": test_case.id,
             }
         )
         assert form.is_valid()
@@ -42,6 +51,7 @@ class TestTestStepForm:
         assert not form.is_valid()
         assert "description" in form.errors
         assert "expected_result" in form.errors
+        assert "test_case" in form.errors
 
 
 @pytest.mark.django_db
@@ -67,9 +77,11 @@ class TestTestStepFormSet:
             "steps-0-order": "1",
             "steps-0-description": "ログインボタンをクリック",
             "steps-0-expected_result": "ログインフォームが表示される",
+            "steps-0-test_case": test_case.id,
             "steps-1-order": "2",
             "steps-1-description": "ログイン情報を入力",
             "steps-1-expected_result": "ホーム画面に遷移する",
+            "steps-1-test_case": test_case.id,
         }
         formset = TestStepFormSet(data, instance=test_case)
         assert formset.is_valid()
@@ -97,6 +109,7 @@ class TestTestStepFormSet:
             "steps-0-description": "ログインボタンをクリック",
             "steps-0-expected_result": "ログインフォームが表示される",
             "steps-0-DELETE": "on",
+            "steps-0-test_case": test_case.id,
         }
         formset = TestStepFormSet(data, instance=test_case)
         assert formset.is_valid()

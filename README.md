@@ -102,6 +102,34 @@ Djangoの標準パーミッションシステムを使用して、以下の権�
 - Django 5.1.6
 - pytest + pytest-django + pytest-cov
 
+### ログ設定
+
+標準エラー出力にDEBUGレベル以上のログが出力されます。ログには以下の情報が含まれます：
+
+- ログレベル
+- タイムスタンプ
+- モジュール名
+- プロセスID
+- スレッドID
+- メッセージ
+
+ログは以下のカテゴリで出力されます：
+
+- django: Djangoフレームワークのログ
+- test_tracking: アプリケーション固有のログ
+
+### メッセージ設定
+
+フラッシュメッセージはBootstrapのアラートスタイルで表示されます：
+
+- DEBUG: alert-secondary
+- INFO: alert-info
+- SUCCESS: alert-success
+- WARNING: alert-warning
+- ERROR: alert-danger
+
+メッセージは自動的に閉じることができ、画面上部に表示されます。
+
 ## ライセンス
 
 このプロジェクトはMITライセンスの下で公開されています - 詳細は[LICENSE](LICENSE)ファイルを参照してください。
