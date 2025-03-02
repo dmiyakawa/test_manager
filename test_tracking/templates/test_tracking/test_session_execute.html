@@ -23,8 +23,9 @@
 <div class="card mb-4">
     <div class="card-header">
         <h5 class="card-title mb-0">
-            <a href="{% url 'case_detail' current_case.id %}" class="link-primary" target="_blank">#{{ current_case.id }}</a>
+            <span class="badge bg-secondary me-2">{{ current_execution_number }}/{{ total_count }}</span>
             {{ current_case.title }}
+            <small><a href="{% url 'case_detail' current_case.id %}" class="link-secondary" target="_blank">#{{ current_case.id }}</a></small>
         </h5>
     </div>
     <div class="card-body">
@@ -128,8 +129,8 @@
                     {% with execution.test_case as case %}
                     <tr {% if current_case and current_case.id == case.id %}class="table-primary"{% endif %}>
                         <td>
-                            <a href="{% url 'case_detail' case.id %}" class="link-primary" target="_blank">#{{ case.id }}</a>
                             {{ case.title }}
+                            <small><a href="{% url 'case_detail' case.id %}" class="link-secondary" target="_blank">#{{ case.id }}</a></small>
                         </td>
                         <td>
                             {% if execution %}

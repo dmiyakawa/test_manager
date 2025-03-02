@@ -197,15 +197,29 @@ class TestSessionExecuteView(LoginRequiredMixin, View):
         completed_count = executions.exclude(status="NOT_TESTED").count()
         progress = (completed_count / total_count) * 100 if total_count > 0 else 0
 
+        test_case_id = request.GET.get("test_case_id")
+
+        # 現在のテストケースが何番目かを計算
+        current_execution_number = 1
+        if test_case_id:
+            for execution in test_session.executions.all():
+                if execution.test_case.id == int(test_case_id):
+                    break
+                current_execution_number += 1
+        else:
+            for execution in test_session.executions.all():
+                if execution.status == "NOT_TESTED":
+                    break
+                current_execution_number += 1
+
         context = {
             "test_session": test_session,
             "total_count": total_count,
             "completed_count": completed_count,
             "progress": progress,
+            "current_execution_number": current_execution_number,
         }
         next_execution = None
-
-        test_case_id = request.GET.get("test_case_id")
         if test_case_id:
             _logger.debug(f"test_case_id specified: {test_case_id}")
             try:
