@@ -98,6 +98,7 @@ class TestSession(models.Model):
     executed_by = models.CharField(max_length=100, blank=True)
     environment = models.CharField(max_length=200, blank=True)
     started_at = models.DateTimeField(default=timezone.now)
+    # 完了した時刻。完了フラグの意味も兼ねる
     completed_at = models.DateTimeField(null=True, blank=True)
     available_suites = models.ManyToManyField(
         TestSuite,
@@ -106,11 +107,27 @@ class TestSession(models.Model):
     )
 
     def __str__(self):
-        return f"{self.project.name} - {self.name} ({self.started_at.strftime('%Y-%m-%d %H:%M')})"
+        return f"{self.project.name} - {self.name} (started_at: {self.started_at.strftime('%Y-%m-%d %H:%M')})"
 
     def complete(self):
         self.completed_at = timezone.now()
         self.save()
+
+    def initialize_executions(self):
+        """選択されたテストケースに対するTestExecutionを作成する"""
+        for test_case in self.get_available_cases():
+            TestExecution.objects.get_or_create(
+                test_session=self,
+                test_case=test_case,
+                defaults={
+                    'environment': self.environment,
+                    'executed_by': self.executed_by,
+                }
+            )
+
+    def get_next_execution(self):
+        """次に実行すべきTestExecutionを返す"""
+        return self.executions.filter(status="NOT_TESTED").first()
 
     def get_available_cases(self) -> TestCase:
         """このテスト実行で選択可能なすべてのテストケースを返す"""
@@ -118,14 +135,15 @@ class TestSession(models.Model):
 
     def get_available_cases_and_executions(self):
         ret = []
-        for test_case in TestCase.objects.filter(suite__in=self.available_suites.all()):
-            execution = TestExecution.objects.filter(test_session=self, test_case=test_case).first()
+        for test_case in self.get_available_cases():
+            execution = self.executions.filter(test_case=test_case).first()
             ret.append((test_case, execution))
         return ret
 
 
 class TestExecution(models.Model):
-    RESULT_CHOICES = [
+    STATUS_CHOICES = [
+        ("NOT_TESTED", "未テスト"),
         ("PASS", "合格"),
         ("FAIL", "不合格"),
         ("BLOCKED", "ブロック"),
@@ -138,12 +156,15 @@ class TestExecution(models.Model):
     test_session = models.ForeignKey(
         TestSession, on_delete=models.CASCADE, related_name="executions"
     )
-    executed_by = models.CharField(max_length=100)
-    executed_at = models.DateTimeField(default=timezone.now)
-    result = models.CharField(max_length=10, choices=RESULT_CHOICES)
+    executed_by = models.CharField(max_length=100, blank=True)
+    executed_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="NOT_TESTED")
     notes = models.TextField(blank=True)
-    actual_result = models.TextField(blank=True)
-    environment = models.CharField(max_length=200)
+    result_detail = models.TextField("詳細", blank=True)
+    environment = models.CharField(max_length=200, blank=True)
 
     def __str__(self):
-        return f"{self.test_case.title} - {self.executed_at.strftime('%Y-%m-%d %H:%M')}"
+        if self.status == "NOT_TESTED":
+            return f"{self.test_case.title} - ({self.status})"
+        else:
+            return f"{self.test_case.title} - {self.status} (executed_at: {self.executed_at.strftime('%Y-%m-%d %H:%M')})"

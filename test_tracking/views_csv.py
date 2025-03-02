@@ -1,6 +1,7 @@
 import csv
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views import View
@@ -322,7 +323,8 @@ class CSVImportView(View):
                     except (KeyError, ValueError) as e:
                         raise ValueError(f"Invalid data format: {str(e)}")
 
-            return HttpResponse("Successfully imported all records")
+            messages.success(request, "CSVファイルのインポートが完了しました")
+            return redirect("project_list")
         except ValueError as e:
             return HttpResponse(f"Import failed: {str(e)}", status=400)
         except Exception as e:

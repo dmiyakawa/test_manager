@@ -62,23 +62,23 @@
             <div class="mb-3">
                 <label class="form-label">結果</label>
                 <div class="btn-group w-100" role="group">
-                    <input type="radio" class="btn-check" name="result" value="PASS" id="result_pass" required>
-                    <label class="btn btn-outline-success" for="result_pass">合格</label>
+                    <input type="radio" class="btn-check" name="status" value="PASS" id="status_pass" required>
+                    <label class="btn btn-outline-success" for="status_pass">合格</label>
 
-                    <input type="radio" class="btn-check" name="result" value="FAIL" id="result_fail">
-                    <label class="btn btn-outline-danger" for="result_fail">不合格</label>
+                    <input type="radio" class="btn-check" name="status" value="FAIL" id="status_fail">
+                    <label class="btn btn-outline-danger" for="status_fail">不合格</label>
 
-                    <input type="radio" class="btn-check" name="result" value="BLOCKED" id="result_blocked">
-                    <label class="btn btn-outline-warning" for="result_blocked">ブロック</label>
+                    <input type="radio" class="btn-check" name="status" value="BLOCKED" id="status_blocked">
+                    <label class="btn btn-outline-warning" for="status_blocked">ブロック</label>
 
-                    <input type="radio" class="btn-check" name="result" value="SKIPPED" id="result_skipped">
-                    <label class="btn btn-outline-secondary" for="result_skipped">スキップ</label>
+                    <input type="radio" class="btn-check" name="status" value="SKIPPED" id="status_skipped">
+                    <label class="btn btn-outline-secondary" for="status_skipped">スキップ</label>
                 </div>
             </div>
 
             <div class="mb-3">
-                <label for="actual_result" class="form-label">実際の結果</label>
-                <textarea class="form-control" id="actual_result" name="actual_result" rows="3"></textarea>
+                <label for="result_detail" class="form-label">詳細</label>
+                <textarea class="form-control" id="result_detail" name="result_detail" rows="3"></textarea>
             </div>
 
             <div class="mb-3">
@@ -124,18 +124,17 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for tup in test_session.get_available_cases_and_executions %}
-                    {% with tup.0 as case %}
-                    {% with tup.1 as execution %}
-                    <tr>
+                    {% for execution in test_session.executions.all %}
+                    {% with execution.test_case as case %}
+                    <tr {% if current_case and current_case.id == case.id %}class="table-primary"{% endif %}>
                         <td>
                             <a href="{% url 'case_detail' case.id %}" class="link-primary" target="_blank">#{{ case.id }}</a>
                             {{ case.title }}
                         </td>
                         <td>
                             {% if execution %}
-                            <span class="badge {% if execution.result == 'PASS' %}bg-success{% elif execution.result == 'FAIL' %}bg-danger{% elif execution.result == 'BLOCKED' %}bg-warning{% else %}bg-secondary{% endif %}">
-                                {{ execution.get_result_display }}
+                            <span class="badge {% if execution.status == 'PASS' %}bg-success{% elif execution.status == 'FAIL' %}bg-danger{% elif execution.status == 'BLOCKED' %}bg-warning{% elif execution.status == 'NOT_TESTED' %}bg-light text-dark{% else %}bg-secondary{% endif %}">
+                                {{ execution.get_status_display }}
                             </span>
                             {% else %}
                             <span class="badge bg-light text-dark">未実行</span>
@@ -143,7 +142,11 @@
                         </td>
                         <td>{{ execution.notes|default:"-"|truncatewords:10 }}</td>
                         <td>
-                            {% if not execution or execution.result == 'SKIPPED' %}
+                            {% if current_case and current_case.id == case.id %}
+                            <button class="btn btn-sm btn-outline-primary" disabled>
+                                <i class="bi bi-hourglass-split"></i> 実行中
+                            </button>
+                            {% elif execution.status == 'NOT_TESTED' or execution.status == 'SKIPPED' %}
                             <form method="post" action="{% url 'test_session_execute' test_session.id %}" class="d-inline">
                                 {% csrf_token %}
                                 <input type="hidden" name="test_case_id" value="{{ case.id }}">
@@ -155,11 +158,23 @@
                         </td>
                     </tr>
                     {% endwith %}
-                    {% endwith %}
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
+{% if current_case %}
+<div class="card mt-4">
+    <div class="card-body text-center">
+        <form method="post" action="{% url 'test_session_skip_all' test_session.pk %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger" onclick="return confirm('未実行のテストケースをすべてスキップしてテストセッションを完了します。よろしいですか？')">
+                <i class="bi bi-stop-circle"></i> テストセッションを中止
+            </button>
+        </form>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

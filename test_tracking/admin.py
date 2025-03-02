@@ -38,6 +38,6 @@ class TestCaseAdmin(admin.ModelAdmin):
 
 @admin.register(TestExecution)
 class TestExecutionAdmin(admin.ModelAdmin):
-    list_display = ("test_case", "result", "executed_by", "executed_at", "environment")
-    list_filter = ("result", "environment")
+    list_display = ("test_case", "status", "executed_by", "executed_at", "environment")
+    list_filter = ("status", "environment")
     search_fields = ("test_case__title", "notes", "executed_by")

@@ -174,8 +174,8 @@
                                 </td>
                                 <td>{{ execution.test_case.suite.name }}</td>
                                 <td>
-                                    <span class="badge {% if execution.result == 'PASS' %}bg-success{% elif execution.result == 'FAIL' %}bg-danger{% elif execution.result == 'BLOCKED' %}bg-warning{% else %}bg-secondary{% endif %}">
-                                        {{ execution.get_result_display }}
+                                    <span class="badge {% if execution.status == 'PASS' %}bg-success{% elif execution.status == 'FAIL' %}bg-danger{% elif execution.status == 'BLOCKED' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                        {{ execution.get_status_display }}
                                     </span>
                                 </td>
                                 <td>{{ execution.executed_by }}</td>

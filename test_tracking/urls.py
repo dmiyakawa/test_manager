@@ -77,6 +77,11 @@ urlpatterns = [
         name="test_session_execute",
     ),
     path(
+        "test-session/<int:pk>/skip-all/",
+        views.TestSessionSkipAllView.as_view(),
+        name="test_session_skip_all",
+    ),
+    path(
         "test-session/<int:pk>/",
         views.TestSessionDetailView.as_view(),
         name="test_session_detail"

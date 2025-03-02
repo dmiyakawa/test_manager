@@ -79,7 +79,7 @@
                     <tr>
                         <th>テストケース</th>
                         <th>結果</th>
-                        <th>実際の結果</th>
+                        <th>詳細</th>
                         <th>備考</th>
                         <th>実行日時</th>
                     </tr>
@@ -93,11 +93,11 @@
                             </a>
                         </td>
                         <td>
-                            <span class="badge {% if execution.result == 'PASS' %}bg-success{% elif execution.result == 'FAIL' %}bg-danger{% elif execution.result == 'BLOCKED' %}bg-warning{% else %}bg-secondary{% endif %}">
-                                {{ execution.get_result_display }}
+                            <span class="badge {% if execution.status == 'PASS' %}bg-success{% elif execution.status == 'FAIL' %}bg-danger{% elif execution.status == 'BLOCKED' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                {{ execution.get_status_display }}
                             </span>
                         </td>
-                        <td>{{ execution.actual_result|linebreaks|truncatewords:30 }}</td>
+                        <td>{{ execution.result_detail|linebreaks|truncatewords:30 }}</td>
                         <td>{{ execution.notes|truncatewords:10 }}</td>
                         <td>{{ execution.executed_at|date:"Y/m/d H:i" }}</td>
                     </tr>

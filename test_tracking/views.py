@@ -1,4 +1,6 @@
 from datetime import date
+from django.utils import timezone
+from logging import getLogger
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import (
@@ -9,7 +11,7 @@ from django.views.generic import (
     DeleteView,
     View,
 )
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -26,6 +28,9 @@ from .forms import (
 from .mixins import ProjectManagerRequired, TestEditorRequired, TestExecutorRequired
 
 User = get_user_model()
+
+
+_logger = getLogger("views")
 
 
 class AdminDashboardView(LoginRequiredMixin, UserPassesTestMixin, View):
@@ -159,13 +164,6 @@ class TestSessionCreateView(TestExecutorRequired, CreateView):
         print(context)
         return context
 
-    # def get_form_kwargs(self):
-    #     context = self.get_context_data()
-    #     kwargs = super().get_form_kwargs()
-    #     if not kwargs.get('data'):  # Only set initial data if form is not submitted
-    #         kwargs['initial'] = {'name': context['initial_name']}
-    #     return kwargs
-
     def form_valid(self, form):
         # プロジェクトを設定
         form.instance.project = get_object_or_404(Project, pk=self.kwargs["project_pk"])
@@ -176,9 +174,8 @@ class TestSessionCreateView(TestExecutorRequired, CreateView):
         selected_suites = self.request.POST.getlist("selected_suites")
         self.object.available_suites.set(selected_suites)
 
-        # 選択されたテストケースをセッションに保存
-        selected_cases = self.request.POST.getlist("selected_cases")
-        self.request.session["selected_cases"] = selected_cases
+        # TestExecutionを初期化
+        self.object.initialize_executions()
 
         return response
 
@@ -190,20 +187,14 @@ class TestSessionCreateView(TestExecutorRequired, CreateView):
 
 
 class TestSessionExecuteView(LoginRequiredMixin, View):
+    """テストセッション内でTestExecutionを一つ選んで実行する際のビュー"""
     template_name = "test_tracking/test_session_execute.html"
 
     def get(self, request, pk):
         test_session = get_object_or_404(TestSession, pk=pk)
-        executed_cases = test_session.executions.values_list("test_case_id", flat=True)
-        selected_cases = request.session.get("selected_cases", [])
-        remaining_cases = [
-            int(case_id)
-            for case_id in selected_cases
-            if int(case_id) not in executed_cases
-        ]
-
-        total_count = len(selected_cases)
-        completed_count = len(executed_cases)
+        executions = test_session.executions.all()
+        total_count = executions.count()
+        completed_count = executions.exclude(status="NOT_TESTED").count()
         progress = (completed_count / total_count) * 100 if total_count > 0 else 0
 
         context = {
@@ -212,15 +203,24 @@ class TestSessionExecuteView(LoginRequiredMixin, View):
             "completed_count": completed_count,
             "progress": progress,
         }
+        next_execution = None
 
-        if not remaining_cases:
+        test_case_id = request.GET.get("test_case_id")
+        if test_case_id:
+            _logger.debug(f"test_case_id specified: {test_case_id}")
+            try:
+                next_execution = test_session.executions.get(test_case_id=test_case_id)
+            except TestExecution.DoesNotExist:
+                pass
+        if not next_execution:
+            next_execution = test_session.get_next_execution()
+
+        if not next_execution:
             if not test_session.completed_at:
                 test_session.complete()
             return redirect("test_session_detail", pk=test_session.pk)
 
-        current_case = TestCase.objects.get(pk=remaining_cases[0])
-        context["current_case"] = current_case
-
+        context["current_case"] = next_execution.test_case
         return render(request, self.template_name, context)
 
     def post(self, request, pk):
@@ -228,22 +228,50 @@ class TestSessionExecuteView(LoginRequiredMixin, View):
         test_case = get_object_or_404(TestCase, pk=request.POST.get("test_case_id"))
 
         # テストケース一覧からの実行の場合
-        if "result" not in request.POST:
-            request.session["selected_cases"] = [str(test_case.id)]
-            return redirect("test_session_execute", pk=pk)
+        if "status" not in request.POST:
+            execution = test_session.executions.get(test_case=test_case)
+            if execution.status != "NOT_TESTED":
+                execution.status = "NOT_TESTED"
+                execution.executed_at = None
+                execution.executed_by = ""
+                execution.result_detail = ""
+                execution.notes = ""
+                execution.save()
+            return redirect(f"{reverse('test_session_execute', kwargs={'pk': pk})}?test_case_id={test_case.id}")
 
         # テスト実行フォームからの送信の場合
-        TestExecution.objects.create(
-            test_session=test_session,
-            test_case=test_case,
-            executed_by=test_session.executed_by,
-            environment=test_session.environment,
-            result=request.POST["result"],
-            actual_result=request.POST.get("actual_result", ""),
-            notes=request.POST.get("notes", ""),
-        )
+        execution = test_session.executions.get(test_case=test_case)
+        execution.status = request.POST["status"]
+        execution.executed_by = test_session.executed_by
+        execution.executed_at = timezone.now()
+        execution.environment = test_session.environment
+        execution.result_detail = request.POST.get("result_detail", "")
+        execution.notes = request.POST.get("notes", "")
+        execution.save()
 
         return redirect("test_session_execute", pk=pk)
+
+
+class TestSessionSkipAllView(LoginRequiredMixin, View):
+    """テストセッション内の未実行のテストケースをすべてスキップにして完了する"""
+
+    def post(self, request, pk):
+        test_session = get_object_or_404(TestSession, pk=pk)
+        
+        # 未実行のテストケースをスキップに変更
+        test_session.executions.filter(status="NOT_TESTED").update(
+            status="SKIPPED",
+            executed_by=test_session.executed_by,
+            executed_at=timezone.now(),
+            environment=test_session.environment,
+            notes="一括スキップ"
+        )
+        
+        # テストセッションを完了状態に
+        if not test_session.completed_at:
+            test_session.complete()
+        
+        return redirect("test_session_detail", pk=pk)
 
 
 class TestSessionDetailView(LoginRequiredMixin, DetailView):
@@ -256,10 +284,10 @@ class TestSessionDetailView(LoginRequiredMixin, DetailView):
         executions = self.object.executions.all()
         context.update(
             {
-                "pass_count": executions.filter(result="PASS").count(),
-                "fail_count": executions.filter(result="FAIL").count(),
-                "blocked_count": executions.filter(result="BLOCKED").count(),
-                "skipped_count": executions.filter(result="SKIPPED").count(),
+                "pass_count": executions.filter(status="PASS").count(),
+                "fail_count": executions.filter(status="FAIL").count(),
+                "blocked_count": executions.filter(status="BLOCKED").count(),
+                "skipped_count": executions.filter(status="SKIPPED").count(),
             }
         )
         return context
@@ -347,7 +375,7 @@ class TestSuiteDetailView(LoginRequiredMixin, DetailView):
         )
         
         for session in recent_test_sessions:
-            session.pass_count = session.executions.filter(result="PASS").count()
+            session.pass_count = session.executions.filter(status="PASS").count()
             session.total_count = session.executions.count()
             if session.total_count > 0:
                 session.pass_percentage = (session.pass_count * 100) // session.total_count
@@ -470,10 +498,10 @@ class TestSessionListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         context = super().get_context_data(**kwargs)
         for test_session in context["test_sessions"]:
             executions = test_session.executions.all()
-            test_session.pass_count = executions.filter(result="PASS").count()
-            test_session.fail_count = executions.filter(result="FAIL").count()
-            test_session.blocked_count = executions.filter(result="BLOCKED").count()
-            test_session.skipped_count = executions.filter(result="SKIPPED").count()
+            test_session.pass_count = executions.filter(status="PASS").count()
+            test_session.fail_count = executions.filter(status="FAIL").count()
+            test_session.blocked_count = executions.filter(status="BLOCKED").count()
+            test_session.skipped_count = executions.filter(status="SKIPPED").count()
             test_session.total_count = executions.count()
             test_session.pass_percentage = (test_session.pass_count * 100 // test_session.total_count) if test_session.total_count > 0 else 0
         return context
@@ -485,9 +513,9 @@ class TestExecutionCreateView(TestExecutorRequired, CreateView):
     fields = [
         "test_session",
         "executed_by",
-        "result",
+        "status",
         "notes",
-        "actual_result",
+        "result_detail",
         "environment",
     ]
 

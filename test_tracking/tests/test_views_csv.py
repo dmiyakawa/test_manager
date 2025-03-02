@@ -149,6 +149,11 @@ class TestCSVViews:
             "test_data.csv", csv_data, content_type="text/csv"
         )
         response = client.post(url, {"file": csv_file})
+        assert response.status_code == 302
+        assert response.url == reverse("project_list")
+
+        # リダイレクト先を確認
+        response = client.get(response.url)
         assert response.status_code == 200
 
         # データが正しくインポートされたことを確認
