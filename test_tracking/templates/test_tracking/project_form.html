@@ -1,6 +1,4 @@
 {% extends 'test_tracking/base.html' %}
-{% load guardian_tags %}
-
 {% block content %}
 <div class="mb-4">
     <h1>{% if form.instance.pk %}プロジェクトの編集{% else %}新規プロジェクト作成{% endif %}</h1>
@@ -35,8 +33,7 @@
     </div>
 
     {% if form.instance.pk %}
-    {% get_obj_perms user for object as "project_perms" %}
-    {% if "manage_project" in project_perms %}
+    {% if perms.test_tracking.manage_project %}
     <div class="col-md-6">
         <div class="card">
             <div class="card-body">
@@ -50,14 +47,13 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     {{ member.username }}
-                                    {% get_obj_perms member for object as "member_perms" %}
-                                    {% if "manage_project" in member_perms %}
+                                    {% if 'manage_project' in member.project_permissions %}
                                     <span class="badge bg-primary">管理者</span>
                                     {% endif %}
-                                    {% if "edit_tests" in member_perms %}
+                                    {% if 'edit_tests' in member.project_permissions %}
                                     <span class="badge bg-success">編集者</span>
                                     {% endif %}
-                                    {% if "execute_tests" in member_perms %}
+                                    {% if 'execute_tests' in member.project_permissions %}
                                     <span class="badge bg-info">実行者</span>
                                     {% endif %}
                                 </div>

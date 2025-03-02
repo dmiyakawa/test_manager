@@ -13,14 +13,12 @@
             </p>
         </div>
         <div class="btn-group">
-            {% load guardian_tags %}
-            {% get_obj_perms user for suite.project as "project_perms" %}
-            {% if "execute_tests" in project_perms %}
+            {% if perms.test_tracking.execute_tests %}
             <a href="{% url 'test_session_create' suite.pk %}" class="btn btn-success">
                 <i class="bi bi-play-fill"></i> 一括テストセッション
             </a>
             {% endif %}
-            {% if "edit_tests" in project_perms %}
+            {% if perms.test_tracking.edit_tests %}
             <a href="{% url 'case_create' suite.pk %}" class="btn btn-primary">
                 <i class="bi bi-plus-lg"></i> テストケース追加
             </a>
@@ -73,10 +71,10 @@
                     <td>
                         <div class="btn-group">
                             <a href="{% url 'case_detail' case.pk %}" class="btn btn-sm btn-primary">詳細</a>
-                            {% if "execute_tests" in project_perms %}
+                            {% if perms.test_tracking.execute_tests %}
                             <a href="{% url 'execution_create' case.pk %}" class="btn btn-sm btn-success">実行</a>
                             {% endif %}
-                            {% if "edit_tests" in project_perms %}
+                            {% if perms.test_tracking.edit_tests %}
                             <a href="{% url 'case_update' case.pk %}" class="btn btn-sm btn-secondary">編集</a>
                             <a href="{% url 'case_delete' case.pk %}" class="btn btn-sm btn-danger">削除</a>
                             {% endif %}

@@ -52,9 +52,7 @@ class ProjectPermissionMixin(UserPassesTestMixin):
         if not project:
             return True  # プロジェクト一覧など、特定のプロジェクトに紐付かない場合
 
-        return self.request.user.has_perm(
-            f"test_tracking.{self.project_permission}", project
-        )
+        return self.request.user.has_perm(f"test_tracking.{self.project_permission}")
 
 
 class ProjectManagerRequired(ProjectPermissionMixin):

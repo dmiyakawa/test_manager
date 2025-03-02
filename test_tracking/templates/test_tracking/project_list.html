@@ -29,19 +29,17 @@
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            {% load guardian_tags %}
-                            {% get_obj_perms user for project as "project_perms" %}
-                            {% if "manage_project" in project_perms %}
+                            {% if perms.test_tracking.manage_project %}
                             <span class="badge bg-primary">管理者</span>
                             {% endif %}
-                            {% if "edit_tests" in project_perms %}
+                            {% if perms.test_tracking.edit_tests %}
                             <span class="badge bg-success">編集者</span>
                             {% endif %}
-                            {% if "execute_tests" in project_perms %}
+                            {% if perms.test_tracking.execute_tests %}
                             <span class="badge bg-info">実行者</span>
                             {% endif %}
                         </div>
-                        {% if "manage_project" in project_perms %}
+                        {% if perms.test_tracking.manage_project %}
                         <a href="{% url 'project_update' project.pk %}" class="btn btn-secondary btn-sm">
                             <i class="bi bi-gear-fill"></i> 設定
                         </a>
@@ -62,7 +60,7 @@
 
     <div class="mb-4">
         <div class="d-flex justify-content-between align-items-center">
-            <h2>テストイテレーション一覧</h2>
+            <h2>テストセッション一覧</h2>
         </div>
     </div>
 
@@ -73,7 +71,7 @@
                     <thead>
                         <tr>
                             <th>プロジェクト</th>
-                            <th>テストイテレーション</th>
+                            <th>テストセッション</th>
                             <th>進捗</th>
                             <th>状態</th>
                             <th>開始日時</th>
@@ -81,17 +79,17 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for test_iteration in test_iterations %}
+                        {% for test_session in test_sessions %}
                         <tr>
                             <td>
-                                <a href="{% url 'project_detail' test_iteration.project.id %}">{{ test_iteration.project.name }}</a>
+                                <a href="{% url 'project_detail' test_session.project.id %}">{{ test_session.project.name }}</a>
                             </td>
                             <td>
-                                <a href="{% url 'test_iteration_detail' test_iteration.id %}">{{ test_iteration.name }}</a>
+                                <a href="{% url 'test_session_detail' test_session.id %}">{{ test_session.name }}</a>
                             </td>
                             <td>
-                                {% with execution_count=test_iteration.executions.count %}
-                                {% with total_count=test_iteration.get_available_cases.count %}
+                                {% with execution_count=test_session.executions.count %}
+                                {% with total_count=test_session.get_available_cases.count %}
                                 {% if total_count > 0 %}
                                 {{ execution_count }}/{{ total_count }}
                                 ({{ execution_count|multiply:100|divide:total_count }}%)
@@ -102,14 +100,14 @@
                                 {% endwith %}
                             </td>
                             <td>
-                                <span class="badge {% if test_iteration.completed_at %}bg-success{% else %}bg-warning{% endif %}">
-                                    {{ test_iteration.completed_at|yesno:"完了,実行中" }}
+                                <span class="badge {% if test_session.completed_at %}bg-success{% else %}bg-warning{% endif %}">
+                                    {{ test_session.completed_at|yesno:"完了,実行中" }}
                                 </span>
                             </td>
-                            <td>{{ test_iteration.started_at|date:"Y/m/d H:i" }}</td>
+                            <td>{{ test_session.started_at|date:"Y/m/d H:i" }}</td>
                             <td>
-                                {% if not test_iteration.completed_at %}
-                                <a href="{% url 'test_iteration_execute' test_iteration.id %}" class="btn btn-sm btn-outline-primary">
+                                {% if not test_session.completed_at %}
+                                <a href="{% url 'test_session_execute' test_session.id %}" class="btn btn-sm btn-outline-primary">
                                     <i class="bi bi-play-fill"></i> 実行
                                 </a>
                                 {% endif %}
@@ -117,7 +115,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center">テストイテレーションがありません。</td>
+                            <td colspan="6" class="text-center">テストセッションがありません。</td>
                         </tr>
                         {% endfor %}
                     </tbody>

@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import (
     ListView,
@@ -11,7 +13,8 @@ from django.urls import reverse_lazy
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from guardian.shortcuts import assign_perm, remove_perm, get_users_with_perms
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 from .models import Project, TestSuite, TestCase, TestSession, TestExecution
 from .forms import (
     ProjectForm,
@@ -53,9 +56,13 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         response = super().form_valid(form)
         # 作成者に全ての権限を付与
-        assign_perm("manage_project", self.request.user, self.object)
-        assign_perm("edit_tests", self.request.user, self.object)
-        assign_perm("execute_tests", self.request.user, self.object)
+        content_type = ContentType.objects.get_for_model(Project)
+        permissions = Permission.objects.filter(content_type=content_type, codename__in=[
+            'manage_project',
+            'edit_tests',
+            'execute_tests'
+        ])
+        self.request.user.user_permissions.add(*permissions)
         return response
 
     def get_success_url(self):
@@ -69,13 +76,23 @@ class ProjectUpdateView(ProjectManagerRequired, UpdateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        content_type = ContentType.objects.get_for_model(Project)
+        project_permissions = Permission.objects.filter(content_type=content_type)
+        
         # プロジェクトメンバー管理用のコンテキストを追加
-        project_users = get_users_with_perms(self.object, attach_perms=True)
-        context["project_members"] = [
-            user for user in User.objects.filter(id__in=project_users.keys())
-        ]
+        # Get all users with any project permissions
+        members = User.objects.filter(
+            user_permissions__in=project_permissions
+        ).distinct()
+        
+        # Add permission information to each member
+        for member in members:
+            perms = member.user_permissions.filter(content_type=content_type).values_list('codename', flat=True)
+            member.project_permissions = list(perms)
+        
+        context["project_members"] = members
         context["available_users"] = User.objects.exclude(
-            id__in=project_users.keys()
+            user_permissions__in=project_permissions
         ).exclude(is_superuser=True)
         return context
 
@@ -92,8 +109,9 @@ class ProjectMemberView(ProjectManagerRequired, View):
             user = form.cleaned_data["user"]
             permissions = form.cleaned_data["permissions"]
 
-            for perm in permissions:
-                assign_perm(perm, user, project)
+            content_type = ContentType.objects.get_for_model(Project)
+            perms = Permission.objects.filter(content_type=content_type, codename__in=permissions)
+            user.user_permissions.add(*perms)
 
             messages.success(request, "メンバーを追加しました")
         else:
@@ -108,9 +126,13 @@ class ProjectMemberRemoveView(ProjectManagerRequired, View):
         user_id = request.POST.get("user")
         user = get_object_or_404(User, id=user_id)
 
-        remove_perm("manage_project", user, project)
-        remove_perm("edit_tests", user, project)
-        remove_perm("execute_tests", user, project)
+        content_type = ContentType.objects.get_for_model(Project)
+        permissions = Permission.objects.filter(content_type=content_type, codename__in=[
+            'manage_project',
+            'edit_tests',
+            'execute_tests'
+        ])
+        user.user_permissions.remove(*permissions)
 
         messages.success(request, "メンバーを削除しました")
         return redirect("project_update", pk=pk)
@@ -119,16 +141,35 @@ class ProjectMemberRemoveView(ProjectManagerRequired, View):
 class TestSessionCreateView(TestExecutorRequired, CreateView):
     model = TestSession
     template_name = "test_tracking/test_session_form.html"
-    fields = ["name", "description", "executed_by", "environment"]
+    fields = ["name", "description", "environment"]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["project"] = get_object_or_404(Project, pk=self.kwargs["project_pk"])
+        project = get_object_or_404(Project, pk=self.kwargs["project_pk"])
+        context["project"] = project
+        
+        base_name = f"テストセッション ({date.today().strftime('%Y/%m/%d')})"
+        name = base_name
+        counter = 1
+        while TestSession.objects.filter(project=project, name=name).exists():
+            name = f"{base_name} ({counter})"
+            counter += 1
+        
+        context["initial_name"] = name
+        print(context)
         return context
+
+    # def get_form_kwargs(self):
+    #     context = self.get_context_data()
+    #     kwargs = super().get_form_kwargs()
+    #     if not kwargs.get('data'):  # Only set initial data if form is not submitted
+    #         kwargs['initial'] = {'name': context['initial_name']}
+    #     return kwargs
 
     def form_valid(self, form):
         # プロジェクトを設定
         form.instance.project = get_object_or_404(Project, pk=self.kwargs["project_pk"])
+        form.instance.executed_by = self.request.user.username
         response = super().form_valid(form)
 
         # 選択されたスイートを設定
@@ -411,7 +452,7 @@ class TestCaseDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class TestSessionListView(UserPassesTestMixin, ListView):
+class TestSessionListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = TestSession
     template_name = "test_tracking/test_session_list.html"
     context_object_name = "test_sessions"
@@ -419,6 +460,11 @@ class TestSessionListView(UserPassesTestMixin, ListView):
 
     def test_func(self):
         return self.request.user.is_superuser
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        queryset = queryset.select_related('project')
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

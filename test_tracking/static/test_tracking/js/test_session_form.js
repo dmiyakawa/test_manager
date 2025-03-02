@@ -2,8 +2,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const suiteCheckboxes = document.getElementsByClassName('suite-checkbox');
     const caseCheckboxes = document.getElementsByClassName('test-case-checkbox');
     const caseRows = document.getElementsByClassName('test-case-row');
-    const startTestIterationTop = document.getElementById('start-test-iteration-top');
-    const startTestIterationBottom = document.getElementById('start-test-iteration-bottom');
+    const startTestSessionTop = document.getElementById('start-test-session-top');
+    const startTestSessionBottom = document.getElementById('start-test-session-bottom');
 
 
     // 個別のスイート選択の処理
@@ -45,8 +45,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const hasSelectedCase = Array.from(caseCheckboxes).some(cb => cb.checked);
         const enabled = hasSelectedSuite && hasSelectedCase;
         
-        startTestIterationTop.disabled = !enabled;
-        startTestIterationBottom.disabled = !enabled;
+        startTestSessionTop.disabled = !enabled;
+        startTestSessionBottom.disabled = !enabled;
     }
 
 

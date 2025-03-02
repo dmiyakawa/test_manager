@@ -37,14 +37,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "guardian",
     "test_tracking",
 ]
-
-AUTHENTICATION_BACKENDS = (
-    "django.contrib.auth.backends.ModelBackend",
-    "guardian.backends.ObjectPermissionBackend",
-)
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

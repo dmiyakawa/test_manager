@@ -12,14 +12,12 @@
             </p>
         </div>
         <div class="btn-group">
-            {% load guardian_tags %}
-            {% get_obj_perms user for case.suite.project as "project_perms" %}
-            {% if "execute_tests" in project_perms %}
+            {% if perms.test_tracking.execute_tests %}
             <a href="{% url 'execution_create' case.pk %}" class="btn btn-success">
                 <i class="bi bi-play-fill"></i> テストセッション
             </a>
             {% endif %}
-            {% if "edit_tests" in project_perms %}
+            {% if perms.test_tracking.edit_tests %}
             <a href="{% url 'case_update' case.pk %}" class="btn btn-secondary">
                 <i class="bi bi-pencil"></i> 編集
             </a>
