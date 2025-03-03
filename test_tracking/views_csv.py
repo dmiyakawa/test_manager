@@ -1,4 +1,7 @@
 import csv
+from logging import getLogger
+import io
+
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
@@ -8,6 +11,8 @@ from django.views import View
 from django.db import transaction
 from .models import Project, TestSuite, TestCase, TestStep
 
+
+_logger = getLogger("views")
 
 class ProjectCSVExportView(View):
     @method_decorator(login_required)
@@ -192,33 +197,33 @@ class CSVImportView(View):
             raw_data = csv_file.read()
             result = chardet.detect(raw_data)
             encoding = result["encoding"]
+            _logger.debug(f"Try {encoding} for decoding a file")
             csv_content = raw_data.decode(encoding)
         except Exception:
-            # デフォルトでUTF-8を使用
+            # デフォルトでUTF-8を使用する
+            _logger.debug("Try utf-8 for decoding a file (fallback)")
             csv_file.seek(0)
             csv_content = csv_file.read().decode("utf-8")
 
         try:
+            # CSVに改行が含まれていると破綻する。あくまでヘッダの雑判定のためだけに使うべき
             lines = csv_content.splitlines()
             if not lines:
                 return HttpResponse("Empty CSV file", status=400)
 
-            # ヘッダー行を取得
+            # ヘッダー行を取得して必要なカラムがあるかを確認する
+            required_headers = {
+                "type", "name", "description", "prerequisites",
+                "status", "priority", "expected_result", "order",
+                "project_name", "parent"
+            }
             headers = [h.strip() for h in lines[0].split(",")]
             if len(headers) != 10:  # 必要なカラム数を確認
                 return HttpResponse("Invalid CSV format: incorrect number of columns", status=400)
 
-            # 必要なヘッダーが存在することを確認
-            required_headers = [
-                "type", "name", "description", "prerequisites",
-                "status", "priority", "expected_result", "order",
-                "project_name", "parent"
-            ]
             if not all(h in headers for h in required_headers):
                 return HttpResponse("Invalid CSV format: missing required headers", status=400)
 
-            # DictReaderを作成
-            reader = csv.DictReader(lines)
             
             # 一時保存用の辞書
             imported_objects = {
@@ -233,7 +238,11 @@ class CSVImportView(View):
                 current_suite = None
                 current_case = None
 
-                for row in reader:
+                # Excel方言の改行対応を含むCSVを読むためにファイルオブジェクトにくるむ                
+                reader = csv.DictReader(io.StringIO(csv_content, newline=''))
+
+                for row_num, row in enumerate(reader, 1):
+                    # print(f"{row_num}: {row['expected_result']}", file=f, flush=True)
                     try:
                         record_type = row["type"]
 
@@ -295,7 +304,7 @@ class CSVImportView(View):
                             project_name = row["project_name"]
                             parent_name = row["parent"]  # テストケースのタイトル
                             if not project_name or not parent_name:
-                                raise ValueError("Step found without project_name or parent")
+                                raise ValueError(f"Step found without project_name or parent (row_num: {row_num})")
 
                             if not row["order"]:
                                 raise ValueError("Step order is required")
