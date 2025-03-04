@@ -35,10 +35,10 @@
             {% for step in current_case.steps.all %}
             <div class="mb-3 p-3 border rounded bg-light bg-opacity-50">
                 <div class="fw-bold">ステップ {{ step.order }}</div>
-                <div class="mb-2">{{ step.description|linebreaks }}</div>
+                <div class="mb-2">{{ step.description|linebreaksbr }}</div>
                 <div class="text-muted">
                     <small>期待される結果:</small><br>
-                    {{ step.expected_result|linebreaks }}
+                    {{ step.expected_result|linebreaksbr }}
                 </div>
             </div>
             {% empty %}
