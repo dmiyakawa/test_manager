@@ -33,39 +33,32 @@ Djangoベースのテスト管理用アプリケーションです。
 
 ### 使用技術
 
-- Python 3.13
+- Python 3.13 + [uv](https://github.com/astral-sh/uv)
 - Django 5.1.6
 - pytest + pytest-django + pytest-cov
 
-### 環境のセットアップ
+Python 3.13をビルド出来るようにしておく必要があります。
+例えば Ubuntu 24.04 LTSの場合は以下のように先に関連パッケージをインストールしてください
 
-1. 仮想環境の作成とアクティベート
 ```bash
-python -m venv venv
-source venv/bin/activate
+sudo apt -y install \
+    libxml2-dev libssl-dev libbz2-dev libcurl4-openssl-dev libjpeg-dev libpng-dev libmcrypt-dev \
+    libreadline-dev libtidy-dev libxslt-dev autoconf \
+    sqlite3 libsqlite3-dev libonig-dev libzip-dev pkg-config php-cli php-mbstring unzip
 ```
 
-2. 依存パッケージのインストール
+### 基本的な使い方
+
+#### 開発用サーバの起動
+
 ```bash
-pip install -r requirements.txt
+uv run manage.py runserver
 ```
 
-3. データベースのセットアップ
+#### テストの実行
+
 ```bash
-python manage.py migrate
-```
-
-4. 開発サーバーの起動
-```bash
-python manage.py runserver
-```
-
-### このアプリケーションのテスト実行方法
-
-
-2. pytestによるテスト（カバレッジレポート付き）
-```bash
-pytest
+uv run pytest
 ```
 
 
