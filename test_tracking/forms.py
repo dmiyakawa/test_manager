@@ -25,12 +25,16 @@ class ProjectMemberForm(forms.Form):
 
 
 class TestSuiteForm(forms.ModelForm):
+    __test__ = False
+
     class Meta:
         model = TestSuite
         fields = ["name", "description"]
 
 
 class TestStepForm(forms.ModelForm):
+    __test__ = False
+
     class Meta:
         model = TestStep
         fields = ["order", "description", "expected_result", "test_case"]
@@ -45,9 +49,11 @@ class TestStepForm(forms.ModelForm):
 TestStepFormSet = inlineformset_factory(
     TestCase, TestStep, form=TestStepForm, extra=0, can_delete=True
 )
-
+TestStepFormSet.__test__ = False
 
 class TestCaseForm(forms.ModelForm):
+    __test__ = False
+
     class Meta:
         model = TestCase
         fields = ["title", "description", "prerequisites", "status", "priority"]
