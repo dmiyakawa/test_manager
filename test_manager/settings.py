@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "test_tracking",
+    "test_manager",
 ]
 
 MIDDLEWARE = [
@@ -172,7 +172,7 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
-        'test_tracking': {
+        'test_manager': {
             'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': False,

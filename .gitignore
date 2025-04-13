@@ -26,7 +26,7 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 media/
-staticfiles/
+static/
 
 # Virtual Environment
 venv/
@@ -58,3 +58,10 @@ coverage.xml
 .env
 .env.local
 .env.*.local
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

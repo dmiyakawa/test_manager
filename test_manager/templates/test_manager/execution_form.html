@@ -1,0 +1,78 @@
+{% extends "test_manager/base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="h5 mb-0">テスト実行</h2>
+                </div>
+                <div class="card-body">
+                    <h3 class="h6 mb-3">テストケース: {{ test_case.title }}</h3>
+
+                    <div class="mb-4">
+                        <h4 class="h6">前提条件:</h4>
+                        <p>{{ test_case.prerequisites|default:"なし"|linebreaks }}</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h4 class="h6">テストステップ:</h4>
+                        <ol class="list-group list-group-numbered mb-3">
+                            {% for step in test_case.steps.all %}
+                            <li class="list-group-item">
+                                <div class="ms-2">
+                                    <div>{{ step.description }}</div>
+                                    <div class="text-muted small">
+                                        <i class="bi bi-check-circle"></i> 期待結果: {{ step.expected_result }}
+                                    </div>
+                                </div>
+                            </li>
+                            {% endfor %}
+                        </ol>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        {% for field in form %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                            {% if field.name == "result" %}
+                            <select name="{{ field.name }}" id="{{ field.id_for_label }}" class="form-select">
+                                <option value="PASS">合格</option>
+                                <option value="FAIL">不合格</option>
+                                <option value="BLOCKED">ブロック</option>
+                                <option value="SKIPPED">スキップ</option>
+                            </select>
+                            {% elif field.name == "notes" or field.name == "result_detail" %}
+                            <textarea name="{{ field.name }}" id="{{ field.id_for_label }}" class="form-control" rows="3"></textarea>
+                            {% else %}
+                            {{ field }}
+                            {% endif %}
+                            {% if field.help_text %}
+                            <div class="form-text">{{ field.help_text }}</div>
+                            {% endif %}
+                            {% if field.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in field.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> 保存
+                            </button>
+                            <a href="{% url 'case_detail' test_case.pk %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> キャンセル
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
