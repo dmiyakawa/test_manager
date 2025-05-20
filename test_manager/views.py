@@ -3,6 +3,7 @@ from django.utils import timezone
 from logging import getLogger
 
 from django.shortcuts import render, get_object_or_404, redirect
+from .models import Project, TestSuite, TestCase, TestSession, TestExecution
 from django.views.generic import (
     ListView,
     DetailView,
@@ -17,7 +18,6 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
-from .models import Project, TestSuite, TestCase, TestSession, TestExecution
 from .forms import (
     ProjectForm,
     ProjectMemberForm,
@@ -62,11 +62,10 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
         response = super().form_valid(form)
         # 作成者に全ての権限を付与
         content_type = ContentType.objects.get_for_model(Project)
-        permissions = Permission.objects.filter(content_type=content_type, codename__in=[
-            'manage_project',
-            'edit_tests',
-            'execute_tests'
-        ])
+        permissions = Permission.objects.filter(
+            content_type=content_type,
+            codename__in=["manage_project", "edit_tests", "execute_tests"],
+        )
         self.request.user.user_permissions.add(*permissions)
         return response
 
@@ -83,18 +82,20 @@ class ProjectUpdateView(ProjectManagerRequired, UpdateView):
         context = super().get_context_data(**kwargs)
         content_type = ContentType.objects.get_for_model(Project)
         project_permissions = Permission.objects.filter(content_type=content_type)
-        
+
         # プロジェクトメンバー管理用のコンテキストを追加
         # Get all users with any project permissions
         members = User.objects.filter(
             user_permissions__in=project_permissions
         ).distinct()
-        
+
         # Add permission information to each member
         for member in members:
-            perms = member.user_permissions.filter(content_type=content_type).values_list('codename', flat=True)
+            perms = member.user_permissions.filter(
+                content_type=content_type
+            ).values_list("codename", flat=True)
             member.project_permissions = list(perms)
-        
+
         context["project_members"] = members
         context["available_users"] = User.objects.exclude(
             user_permissions__in=project_permissions
@@ -115,7 +116,9 @@ class ProjectMemberView(ProjectManagerRequired, View):
             permissions = form.cleaned_data["permissions"]
 
             content_type = ContentType.objects.get_for_model(Project)
-            perms = Permission.objects.filter(content_type=content_type, codename__in=permissions)
+            perms = Permission.objects.filter(
+                content_type=content_type, codename__in=permissions
+            )
             user.user_permissions.add(*perms)
 
             messages.success(request, "メンバーを追加しました")
@@ -132,11 +135,10 @@ class ProjectMemberRemoveView(ProjectManagerRequired, View):
         user = get_object_or_404(User, id=user_id)
 
         content_type = ContentType.objects.get_for_model(Project)
-        permissions = Permission.objects.filter(content_type=content_type, codename__in=[
-            'manage_project',
-            'edit_tests',
-            'execute_tests'
-        ])
+        permissions = Permission.objects.filter(
+            content_type=content_type,
+            codename__in=["manage_project", "edit_tests", "execute_tests"],
+        )
         user.user_permissions.remove(*permissions)
 
         messages.success(request, "メンバーを削除しました")
@@ -152,14 +154,14 @@ class TestSessionCreateView(TestExecutorRequired, CreateView):
         context = super().get_context_data(**kwargs)
         project = get_object_or_404(Project, pk=self.kwargs["project_pk"])
         context["project"] = project
-        
+
         base_name = f"テストセッション ({date.today().strftime('%Y/%m/%d')})"
         name = base_name
         counter = 1
         while TestSession.objects.filter(project=project, name=name).exists():
             name = f"{base_name} ({counter})"
             counter += 1
-        
+
         context["initial_name"] = name
         print(context)
         return context
@@ -188,6 +190,7 @@ class TestSessionCreateView(TestExecutorRequired, CreateView):
 
 class TestSessionExecuteView(LoginRequiredMixin, View):
     """テストセッション内でTestExecutionを一つ選んで実行する際のビュー"""
+
     template_name = "test_manager/test_session_execute.html"
 
     def get(self, request, pk):
@@ -251,7 +254,9 @@ class TestSessionExecuteView(LoginRequiredMixin, View):
                 execution.result_detail = ""
                 execution.notes = ""
                 execution.save()
-            return redirect(f"{reverse('test_session_execute', kwargs={'pk': pk})}?test_case_id={test_case.id}")
+            return redirect(
+                f"{reverse('test_session_execute', kwargs={'pk': pk})}?test_case_id={test_case.id}"
+            )
 
         # テスト実行フォームからの送信の場合
         execution = test_session.executions.get(test_case=test_case)
@@ -271,20 +276,20 @@ class TestSessionSkipAllView(LoginRequiredMixin, View):
 
     def post(self, request, pk):
         test_session = get_object_or_404(TestSession, pk=pk)
-        
+
         # 未実行のテストケースをスキップに変更
         test_session.executions.filter(status="NOT_TESTED").update(
             status="SKIPPED",
             executed_by=test_session.executed_by,
             executed_at=timezone.now(),
             environment=test_session.environment,
-            notes="一括スキップ"
+            notes="一括スキップ",
         )
-        
+
         # テストセッションを完了状態に
         if not test_session.completed_at:
             test_session.complete()
-        
+
         return redirect("test_session_detail", pk=pk)
 
 
@@ -314,7 +319,9 @@ class ProjectListView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["test_sessions"] = TestSession.objects.all().order_by("-started_at")[:10]
+        context["test_sessions"] = TestSession.objects.all().order_by("-started_at")[
+            :10
+        ]
         return context
 
 
@@ -379,23 +386,24 @@ class TestSuiteDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["test_cases"] = self.object.test_cases.all()
-        
+
         # テスト実行の結果を事前に計算
         recent_test_sessions = (
-            self.object.project.test_sessions
-            .filter(available_suites=self.object)
-            .prefetch_related('executions')
+            self.object.project.test_sessions.filter(available_suites=self.object)
+            .prefetch_related("executions")
             .order_by("-started_at")[:5]
         )
-        
+
         for session in recent_test_sessions:
             session.pass_count = session.executions.filter(status="PASS").count()
             session.total_count = session.executions.count()
             if session.total_count > 0:
-                session.pass_percentage = (session.pass_count * 100) // session.total_count
+                session.pass_percentage = (
+                    session.pass_count * 100
+                ) // session.total_count
             else:
                 session.pass_percentage = 0
-        
+
         context["recent_test_sessions"] = recent_test_sessions
         return context
 
@@ -409,8 +417,7 @@ class TestCaseCreateView(TestEditorRequired, CreateView):
         context = super().get_context_data(**kwargs)
         if self.request.POST:
             context["steps_formset"] = TestStepFormSet(
-                self.request.POST,
-                prefix="steps"
+                self.request.POST, prefix="steps"
             )
         else:
             context["steps_formset"] = TestStepFormSet(prefix="steps")
@@ -442,14 +449,11 @@ class TestCaseUpdateView(TestEditorRequired, UpdateView):
         context = super().get_context_data(**kwargs)
         if self.request.POST:
             context["steps_formset"] = TestStepFormSet(
-                self.request.POST,
-                instance=self.object,
-                prefix="steps"
+                self.request.POST, instance=self.object, prefix="steps"
             )
         else:
             context["steps_formset"] = TestStepFormSet(
-                instance=self.object,
-                prefix="steps"
+                instance=self.object, prefix="steps"
             )
         return context
 
@@ -493,10 +497,9 @@ class TestStepListView(TestEditorRequired, View):
         # steps = test_case.get_ordered_steps()
         formset = TestStepFormSet(instance=test_case, prefix="steps")
         _logger.debug(f"GET. formset: {len(formset)}")
-        return render(request, self.template_name, {
-            "test_case": test_case,
-            "formset": formset
-        })
+        return render(
+            request, self.template_name, {"test_case": test_case, "formset": formset}
+        )
 
     def post(self, request, case_pk):
         test_case = get_object_or_404(TestCase, pk=case_pk)
@@ -507,12 +510,11 @@ class TestStepListView(TestEditorRequired, View):
             messages.success(request, "テストステップを更新しました")
             return redirect("case_detail", pk=case_pk)
         else:
-            for error in  formset.errors:
+            for error in formset.errors:
                 messages.warning(request, f"{error}")
-        return render(request, self.template_name, {
-            "test_case": test_case,
-            "formset": formset
-        })
+        return render(
+            request, self.template_name, {"test_case": test_case, "formset": formset}
+        )
 
     def get_permission_object(self):
         return get_object_or_404(TestCase, pk=self.kwargs["case_pk"]).suite.project
@@ -540,7 +542,7 @@ class TestSessionListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        queryset = queryset.select_related('project')
+        queryset = queryset.select_related("project")
         return queryset
 
     def get_context_data(self, **kwargs):
@@ -552,7 +554,11 @@ class TestSessionListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
             test_session.blocked_count = executions.filter(status="BLOCKED").count()
             test_session.skipped_count = executions.filter(status="SKIPPED").count()
             test_session.total_count = executions.count()
-            test_session.pass_percentage = (test_session.pass_count * 100 // test_session.total_count) if test_session.total_count > 0 else 0
+            test_session.pass_percentage = (
+                (test_session.pass_count * 100 // test_session.total_count)
+                if test_session.total_count > 0
+                else 0
+            )
         return context
 
 
@@ -572,12 +578,8 @@ class TestExecutionCreateView(TestExecutorRequired, CreateView):
         context = super().get_context_data(**kwargs)
         test_case = get_object_or_404(TestCase, pk=self.kwargs["case_pk"])
         context["test_case"] = test_case
-        context["test_sessions"] = (
-            test_case.suite.project.test_sessions
-            .filter(
-                available_suites=test_case.suite,
-                completed_at__isnull=True
-            )
+        context["test_sessions"] = test_case.suite.project.test_sessions.filter(
+            available_suites=test_case.suite, completed_at__isnull=True
         )
         return context
 

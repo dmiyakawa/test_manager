@@ -26,9 +26,7 @@ class TestSessionViews:
     @pytest.fixture
     def suite(self, project):
         return TestSuite.objects.create(
-            project=project,
-            name="Test Suite",
-            description="Test Description"
+            project=project, name="Test Suite", description="Test Description"
         )
 
     @pytest.fixture
@@ -39,7 +37,7 @@ class TestSessionViews:
             description="Test Description",
             prerequisites="Test Prerequisites",
             status="DRAFT",
-            priority="MEDIUM"
+            priority="MEDIUM",
         )
 
     @pytest.fixture
@@ -48,18 +46,18 @@ class TestSessionViews:
             project=project,
             name="Test Session",
             executed_by=user,
-            environment="Test Environment"
+            environment="Test Environment",
         )
         test_session.available_suites.add(suite)
         return test_session
 
-    def test_test_session_execute_view_get_next_case(self, client, user, test_session, case):
+    def test_test_session_execute_view_get_next_case(
+        self, client, user, test_session, case
+    ):
         client.login(username="testuser", password="testpass")
         # TestExecutionを作成
         execution = TestExecution.objects.create(
-            test_session=test_session,
-            test_case=case,
-            status="NOT_TESTED"
+            test_session=test_session, test_case=case, status="NOT_TESTED"
         )
 
         url = reverse("test_session_execute", kwargs={"pk": test_session.pk})
@@ -68,13 +66,13 @@ class TestSessionViews:
         assert "Test Case" in str(response.content)
         assert "0/1" in str(response.content)  # 進捗表示（完了数/全体数）
 
-    def test_test_session_execute_view_get_specific_case(self, client, user, test_session, case):
+    def test_test_session_execute_view_get_specific_case(
+        self, client, user, test_session, case
+    ):
         client.login(username="testuser", password="testpass")
         # TestExecutionを作成
         execution = TestExecution.objects.create(
-            test_session=test_session,
-            test_case=case,
-            status="NOT_TESTED"
+            test_session=test_session, test_case=case, status="NOT_TESTED"
         )
 
         # 特定のケースを指定してGETリクエスト
@@ -84,7 +82,9 @@ class TestSessionViews:
         assert response.status_code == 200
         assert "Test Case" in str(response.content)
 
-    def test_test_session_execute_view_get_completed(self, client, user, test_session, case):
+    def test_test_session_execute_view_get_completed(
+        self, client, user, test_session, case
+    ):
         client.login(username="testuser", password="testpass")
         # すべてのテストケースを実行済みに
         TestExecution.objects.create(
@@ -92,21 +92,23 @@ class TestSessionViews:
             test_case=case,
             executed_by=user,
             environment="Test Environment",
-            status="PASS"
+            status="PASS",
         )
 
         url = reverse("test_session_execute", kwargs={"pk": test_session.pk})
         response = client.get(url)
         assert response.status_code == 302
-        assert response.url == reverse("test_session_detail", kwargs={"pk": test_session.pk})
+        assert response.url == reverse(
+            "test_session_detail", kwargs={"pk": test_session.pk}
+        )
 
-    def test_test_session_execute_view_post_with_status(self, client, user, test_session, case):
+    def test_test_session_execute_view_post_with_status(
+        self, client, user, test_session, case
+    ):
         client.login(username="testuser", password="testpass")
         # TestExecutionを作成
         execution = TestExecution.objects.create(
-            test_session=test_session,
-            test_case=case,
-            status="NOT_TESTED"
+            test_session=test_session, test_case=case, status="NOT_TESTED"
         )
 
         url = reverse("test_session_execute", kwargs={"pk": test_session.pk})
@@ -114,7 +116,7 @@ class TestSessionViews:
             "test_case_id": case.pk,
             "status": "PASS",
             "result_detail": "Test Result",
-            "notes": "Test Notes"
+            "notes": "Test Notes",
         }
         response = client.post(url, data)
         assert response.status_code == 302
@@ -123,13 +125,15 @@ class TestSessionViews:
         assert execution.result_detail == "Test Result"
         assert execution.notes == "Test Notes"
 
-    def test_test_session_execute_view_post_without_status(self, client, user, test_session, case):
+    def test_test_session_execute_view_post_without_status(
+        self, client, user, test_session, case
+    ):
         client.login(username="testuser", password="testpass")
         # TestExecutionを作成
         execution = TestExecution.objects.create(
             test_session=test_session,
             test_case=case,
-            status="PASS"  # 一度実行済みのケース
+            status="PASS",  # 一度実行済みのケース
         )
 
         url = reverse("test_session_execute", kwargs={"pk": test_session.pk})
@@ -158,15 +162,15 @@ class TestSessionViews:
         client.login(username="testuser", password="testpass")
         # TestExecutionを作成
         execution = TestExecution.objects.create(
-            test_session=test_session,
-            test_case=case,
-            status="NOT_TESTED"
+            test_session=test_session, test_case=case, status="NOT_TESTED"
         )
 
         url = reverse("test_session_skip_all", kwargs={"pk": test_session.pk})
         response = client.post(url)
         assert response.status_code == 302
-        assert response.url == reverse("test_session_detail", kwargs={"pk": test_session.pk})
+        assert response.url == reverse(
+            "test_session_detail", kwargs={"pk": test_session.pk}
+        )
 
         # 未実行のテストケースがスキップに変更されていることを確認
         execution.refresh_from_db()
@@ -195,9 +199,7 @@ class TestSessionListView:
     @pytest.fixture
     def suite(self, project):
         return TestSuite.objects.create(
-            project=project,
-            name="Test Suite",
-            description="Test Description"
+            project=project, name="Test Suite", description="Test Description"
         )
 
     @pytest.fixture
@@ -206,7 +208,7 @@ class TestSessionListView:
             project=project,
             name="Test Session",
             executed_by=user,
-            environment="Test Environment"
+            environment="Test Environment",
         )
         test_session.available_suites.add(suite)
         return test_session
@@ -224,7 +226,7 @@ class TestSessionListView:
         url = reverse("test_session_list")
         response = client.get(url)
         assert response.status_code == 200
-        content = response.content.decode('utf-8')
+        content = response.content.decode("utf-8")
         assert test_session.name in content
 
     def test_session_detail_view(self, client, user, test_session):
@@ -239,48 +241,54 @@ class TestSessionListView:
     def test_session_create_view_initial_name(self, client, user, project):
         client.login(username="admin", password="adminpass")
         content_type = ContentType.objects.get_for_model(Project)
-        permission = Permission.objects.get(content_type=content_type, codename='execute_tests')
+        permission = Permission.objects.get(
+            content_type=content_type, codename="execute_tests"
+        )
         user.user_permissions.add(permission)
         url = reverse("test_session_create", kwargs={"project_pk": project.pk})
         response = client.get(url)
         assert response.status_code == 200
-        content = response.content.decode('utf-8')
+        content = response.content.decode("utf-8")
         expected_name = f"テストセッション ({date.today().strftime('%Y/%m/%d')})"
         assert expected_name in content
 
     def test_session_create_view_duplicate_name(self, client, user, project):
         client.login(username="admin", password="adminpass")
         content_type = ContentType.objects.get_for_model(Project)
-        permission = Permission.objects.get(content_type=content_type, codename='execute_tests')
+        permission = Permission.objects.get(
+            content_type=content_type, codename="execute_tests"
+        )
         user.user_permissions.add(permission)
-        
+
         # Create a session with the default name
         base_name = f"テストセッション ({date.today().strftime('%Y/%m/%d')})"
         TestSession.objects.create(
             project=project,
             name=base_name,
             executed_by=user,
-            environment="Test Environment"
+            environment="Test Environment",
         )
 
         # Try to create another session
         url = reverse("test_session_create", kwargs={"project_pk": project.pk})
         response = client.get(url)
         assert response.status_code == 200
-        content = response.content.decode('utf-8')
+        content = response.content.decode("utf-8")
         expected_name = f"{base_name} (1)"
         assert expected_name in content
 
     def test_session_create_view(self, client, user, project):
         client.login(username="admin", password="adminpass")
         content_type = ContentType.objects.get_for_model(Project)
-        permission = Permission.objects.get(content_type=content_type, codename='execute_tests')
+        permission = Permission.objects.get(
+            content_type=content_type, codename="execute_tests"
+        )
         user.user_permissions.add(permission)
         url = reverse("test_session_create", kwargs={"project_pk": project.pk})
         data = {
             "name": "New Test Session",
             "environment": "Test Environment",
-            "description": "Test Description"
+            "description": "Test Description",
         }
         response = client.post(url, data)
         assert response.status_code == 302

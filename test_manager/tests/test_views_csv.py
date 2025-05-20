@@ -21,16 +21,71 @@ class TestCSVViews:
     @pytest.fixture
     def csv_data(self):
         data = [
-            ["project_name", "type", "parent", "name", "description", "order", "status", "priority", "prerequisites", "expected_result"],
-            ["Test Project", "project", "", "Test Project", "Test Description", "", "", "", "", ""],
-            ["Test Project", "suite", "Test Project", "Test Suite", "Test Suite Description", "", "", "", "", ""],
-            ["Test Project", "case", "Test Suite", "Test Case", "Test Description", "", "ACTIVE", "HIGH", "", ""],
-            ["Test Project", "step", "Test Case", "", "Test Step", "1", "", "", "", "Expected Result"]
+            [
+                "project_name",
+                "type",
+                "parent",
+                "name",
+                "description",
+                "order",
+                "status",
+                "priority",
+                "prerequisites",
+                "expected_result",
+            ],
+            [
+                "Test Project",
+                "project",
+                "",
+                "Test Project",
+                "Test Description",
+                "",
+                "",
+                "",
+                "",
+                "",
+            ],
+            [
+                "Test Project",
+                "suite",
+                "Test Project",
+                "Test Suite",
+                "Test Suite Description",
+                "",
+                "",
+                "",
+                "",
+                "",
+            ],
+            [
+                "Test Project",
+                "case",
+                "Test Suite",
+                "Test Case",
+                "Test Description",
+                "",
+                "ACTIVE",
+                "HIGH",
+                "",
+                "",
+            ],
+            [
+                "Test Project",
+                "step",
+                "Test Case",
+                "",
+                "Test Step",
+                "1",
+                "",
+                "",
+                "",
+                "Expected Result",
+            ],
         ]
         output = io.StringIO()
         writer = csv.writer(output)
         writer.writerows(data)
-        return output.getvalue().encode('utf-8')
+        return output.getvalue().encode("utf-8")
 
     def test_csv_management_view(self, client, admin_user):
         client.login(username="admin", password="adminpass")
@@ -54,22 +109,20 @@ class TestCSVViews:
             name="Test Project", description="Test Description"
         )
         suite = TestSuite.objects.create(
-            project=project,
-            name="Test Suite",
-            description="Test Suite Description"
+            project=project, name="Test Suite", description="Test Suite Description"
         )
         case = TestCase.objects.create(
             suite=suite,
             title="Test Case",
             description="Test Description",
             status="ACTIVE",
-            priority="HIGH"
+            priority="HIGH",
         )
         step = TestStep.objects.create(
             test_case=case,
             order=1,
             description="Test Step",
-            expected_result="Expected Result"
+            expected_result="Expected Result",
         )
 
         # 別のプロジェクトのデータを作成（エクスポートされないことを確認するため）
@@ -79,7 +132,7 @@ class TestCSVViews:
         other_suite = TestSuite.objects.create(
             project=other_project,
             name="Other Suite",
-            description="Other Suite Description"
+            description="Other Suite Description",
         )
 
         # プロジェクト単位のエクスポート
@@ -108,22 +161,20 @@ class TestCSVViews:
             name="Test Project", description="Test Description"
         )
         suite = TestSuite.objects.create(
-            project=project,
-            name="Test Suite",
-            description="Test Suite Description"
+            project=project, name="Test Suite", description="Test Suite Description"
         )
         case = TestCase.objects.create(
             suite=suite,
             title="Test Case",
             description="Test Description",
             status="ACTIVE",
-            priority="HIGH"
+            priority="HIGH",
         )
         step = TestStep.objects.create(
             test_case=case,
             order=1,
             description="Test Step",
-            expected_result="Expected Result"
+            expected_result="Expected Result",
         )
 
         # エクスポート
@@ -194,9 +245,7 @@ class TestCSVViews:
             b"Test Project,invalid,Test,Test,Test,,,,,,\r\n"
         )
         csv_file = SimpleUploadedFile(
-            "test_data.csv",
-            invalid_data,
-            content_type="text/csv"
+            "test_data.csv", invalid_data, content_type="text/csv"
         )
         response = client.post(url, {"file": csv_file})
         assert response.status_code == 400

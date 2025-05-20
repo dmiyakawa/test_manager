@@ -107,7 +107,7 @@ class TestSession(models.Model):
     available_suites = models.ManyToManyField(
         TestSuite,
         related_name="available_test_sessions",
-        help_text="このテストセッションで選択可能なテストスイート"
+        help_text="このテストセッションで選択可能なテストスイート",
     )
 
     def __str__(self):
@@ -124,9 +124,9 @@ class TestSession(models.Model):
                 test_session=self,
                 test_case=test_case,
                 defaults={
-                    'environment': self.environment,
-                    'executed_by': self.executed_by,
-                }
+                    "environment": self.environment,
+                    "executed_by": self.executed_by,
+                },
             )
 
     def get_next_execution(self):
@@ -162,7 +162,9 @@ class TestExecution(models.Model):
     )
     executed_by = models.CharField(max_length=100, blank=True)
     executed_at = models.DateTimeField(null=True, blank=True)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="NOT_TESTED")
+    status = models.CharField(
+        max_length=10, choices=STATUS_CHOICES, default="NOT_TESTED"
+    )
     notes = models.TextField(blank=True)
     result_detail = models.TextField("詳細", blank=True)
     environment = models.CharField(max_length=200, blank=True)

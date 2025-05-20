@@ -1,22 +1,22 @@
 from django.contrib import admin
+from django.contrib import admin
 from django.urls import path, include
-from . import views, views_csv
+from . import views, views_csv, api
+from rest_framework.urlpatterns import format_suffix_patterns
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("accounts/", include("django.contrib.auth.urls")),
-    path('admin-dashboard/', views.AdminDashboardView.as_view(), name='admin_dashboard'),
     path(
-        "csv/export/", views_csv.CSVExportView.as_view(), name="csv_export"
+        "admin-dashboard/", views.AdminDashboardView.as_view(), name="admin_dashboard"
     ),
+    path("csv/export/", views_csv.CSVExportView.as_view(), name="csv_export"),
     path(
         "project/<int:project_id>/csv/export/",
         views_csv.ProjectCSVExportView.as_view(),
-        name="project_csv_export"
+        name="project_csv_export",
     ),
-    path(
-        "csv/import/", views_csv.CSVImportView.as_view(), name="csv_import"
-    ),
+    path("csv/import/", views_csv.CSVImportView.as_view(), name="csv_import"),
     path("csv/", views.CSVManagementView.as_view(), name="csv_management"),
     # プロジェクト管理
     path("", views.ProjectListView.as_view(), name="project_list"),
@@ -59,7 +59,9 @@ urlpatterns = [
         name="case_create",
     ),
     path("case/<int:pk>/", views.TestCaseDetailView.as_view(), name="case_detail"),
-    path("case/<int:case_pk>/steps/", views.TestStepListView.as_view(), name="step_list"),
+    path(
+        "case/<int:case_pk>/steps/", views.TestStepListView.as_view(), name="step_list"
+    ),
     path("case/<int:pk>/edit/", views.TestCaseUpdateView.as_view(), name="case_update"),
     path(
         "case/<int:pk>/delete/", views.TestCaseDeleteView.as_view(), name="case_delete"
@@ -88,11 +90,12 @@ urlpatterns = [
     path(
         "test-session/<int:pk>/",
         views.TestSessionDetailView.as_view(),
-        name="test_session_detail"
+        name="test_session_detail",
     ),
     path(
-        "test-sessions/",
-        views.TestSessionListView.as_view(),
-        name="test_session_list"
+        "test-sessions/", views.TestSessionListView.as_view(), name="test_session_list"
     ),
+    path("projects/", api.ProjectList.as_view(), name="project-list"),
 ]
+
+urlpatterns = format_suffix_patterns(urlpatterns)

@@ -73,3 +73,8 @@ uv run pytest
 ## ライセンス
 
 このプロジェクトはMITライセンスの下で公開されています - 詳細は[LICENSE](LICENSE)ファイルを参照してください。
+
+### REST API
+- Project一覧APIを追加
+    - Django Rest Frameworkによる実装を `views.py` から `api.py` に分離しました。
+    - `urls.py` を更新し、`api.py` の `ProjectList` ビューを使用するようにしました。
