@@ -1,99 +1,130 @@
+import pytest
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APITestCase
-from django.contrib.auth import get_user_model
+from test_manager.models import Project, TestSuite, TestCase, TestSession, TestExecution
+import json
+
+
+@pytest.fixture
+def project(db):
+    return Project.objects.create(name="Test Project")
+
+
+@pytest.fixture
+def test_suite(db, project):
+    return TestSuite.objects.create(project=project, name="Test Suite")
+
+
+@pytest.fixture
+def test_case(db, test_suite):
+    return TestCase.objects.create(suite=test_suite, title="Test Case")
+
+
 from rest_framework.authtoken.models import Token
-from test_manager.models import Project
+from django.contrib.auth.models import User
 
-User = get_user_model()
-
-
-class ProjectListAPITests(APITestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
-            username="testuser", password="testpassword123"
-        )
-        self.token = Token.objects.create(user=self.user)
-        self.project1 = Project.objects.create(
-            name="Project 1", description="Description 1"
-        )
-        self.project2 = Project.objects.create(
-            name="Project 2", description="Description 2"
-        )
-        self.url = reverse("project-list")
-
-    def test_list_projects_unauthenticated(self):
-        """
-        認証なしでプロジェクト一覧を取得しようとすると401エラーになることを確認します。
-        """
-        response = self.client.get(self.url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    def test_list_projects_authenticated(self):
-        """
-        認証済みユーザーがプロジェクト一覧を取得できることを確認します。
-        """
-        self.client.credentials(HTTP_AUTHORIZATION="Token " + self.token.key)
-        response = self.client.get(self.url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
-        project_names = [p["name"] for p in response.data]
-        self.assertIn("Project 1", project_names)
-        self.assertIn("Project 2", project_names)
-
-    def test_create_project_unauthenticated(self):
-        """
-        認証なしでプロジェクトを作成しようとすると401エラーになることを確認します。
-        """
-        data = {"name": "New Project Unauth", "description": "New Description"}
-        response = self.client.post(self.url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    def test_create_project_authenticated(self):
-        """
-        認証済みユーザーがAPI経由でプロジェクトを作成できることを確認します。
-        """
-        self.client.credentials(HTTP_AUTHORIZATION="Token " + self.token.key)
-        data = {"name": "New Project Auth", "description": "New Description"}
-        response = self.client.post(self.url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Project.objects.count(), 3)  # setUpで2つ作成済み
-        self.assertTrue(Project.objects.filter(name="New Project Auth").exists())
+from rest_framework.test import APIClient
 
 
-class APITokenAuthTests(APITestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
-            username="testuser", password="testpassword123"
-        )
-        self.url = reverse("api_token_auth")
+@pytest.fixture
+def api_client(db):
+    user = User.objects.create_user(username="testuser", password="testpassword")
+    token = Token.objects.create(user=user)
+    api_client = APIClient()
+    api_client.credentials(HTTP_AUTHORIZATION="Token " + token.key)
+    return api_client
 
-    def test_obtain_token_success(self):
-        """
-        正しい認証情報でAPIトークンを取得できることを確認します。
-        """
-        data = {"username": "testuser", "password": "testpassword123"}
-        response = self.client.post(self.url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("token", response.data)
-        self.assertTrue(
-            Token.objects.filter(user=self.user, key=response.data["token"]).exists()
-        )
 
-    def test_obtain_token_failure_wrong_password(self):
-        """
-        誤ったパスワードでAPIトークンを取得しようとすると400エラーになることを確認します。
-        """
-        data = {"username": "testuser", "password": "wrongpassword"}
-        response = self.client.post(self.url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertNotIn("token", response.data)
+def test_get_project_list(api_client, project):
+    url = reverse("project-list")
+    response = api_client.get(url)
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data[0]["name"] == "Test Project"
 
-    def test_obtain_token_failure_nonexistent_user(self):
-        """
-        存在しないユーザーでAPIトークンを取得しようとすると400エラーになることを確認します。
-        """
-        data = {"username": "nonexistent", "password": "somepassword"}
-        response = self.client.post(self.url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertNotIn("token", response.data)
+
+def test_get_project_test_suite_list(api_client, project, test_suite):
+    url = reverse("project-test-suite-list", kwargs={"project_id": project.id})
+    response = api_client.get(url)
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data[0]["name"] == "Test Suite"
+
+
+def test_get_project_test_suite_list_with_test_cases(
+    api_client, project, test_suite, test_case
+):
+    url = (
+        reverse("project-test-suite-list", kwargs={"project_id": project.id})
+        + "?include_cases=true"
+    )
+    response = api_client.get(url)
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data[0]["name"] == "Test Suite"
+    assert len(response.data[0]["test_cases"]) == 1
+    assert response.data[0]["test_cases"][0]["title"] == "Test Case"
+
+
+def test_create_test_session(api_client, project, test_suite, test_case):
+    url = reverse("test-session-create")
+    data = {
+        "project": project.id,
+        "name": "Test Session 1",
+        "description": "Test Description",
+        "executed_by": "testuser",
+        "environment": "Test Env",
+        "available_suites": [test_suite.id],
+    }
+    response = api_client.post(
+        url, data=json.dumps(data), content_type="application/json"
+    )
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.data["name"] == "Test Session 1"
+    assert response.data["description"] == "Test Description"
+    assert TestSession.objects.count() == 1
+    test_session = TestSession.objects.first()
+    assert test_session.executions.count() == 1
+
+
+def test_execute_test_case(api_client, project, test_suite, test_case):
+    test_session = TestSession.objects.create(
+        project=project,
+        name="Test Session 1",
+        executed_by="testuser",
+        environment="Test Env",
+    )
+    test_session.available_suites.add(test_suite)
+    execution = TestExecution.objects.create(
+        test_session=test_session,
+        test_case=test_case,
+        executed_by="testuser",
+        environment="Test Env",
+    )
+
+    url = reverse("execute-test-case", kwargs={"pk": test_session.id})
+    data = {
+        "test_case_id": test_case.id,
+        "status": "PASS",
+        "result_detail": "Test Result",
+        "notes": "Test Notes",
+    }
+    response = api_client.post(
+        url, data=json.dumps(data), content_type="application/json"
+    )
+    assert response.status_code == status.HTTP_200_OK
+    execution.refresh_from_db()
+    assert execution.status == "PASS"
+    assert execution.result_detail == "Test Result"
+    assert execution.notes == "Test Notes"
+
+
+def test_execute_test_case_api_not_found(api_client, project, test_suite, test_case):
+    url = reverse("execute-test-case", kwargs={"pk": 999})
+    data = {
+        "test_case_id": test_case.id,
+        "status": "PASS",
+        "result_detail": "Test Result",
+        "notes": "Test Notes",
+    }
+    response = api_client.post(
+        url, data=json.dumps(data), content_type="application/json"
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND

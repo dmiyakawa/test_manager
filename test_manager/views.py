@@ -198,13 +198,9 @@ class TestSessionExecuteView(LoginRequiredMixin, View):
     def get(self, request, pk):
         test_session = get_object_or_404(TestSession, pk=pk)
         executions = test_session.executions.all()
-        total_count = executions.count()
-        completed_count = executions.exclude(status="NOT_TESTED").count()
-        progress = (completed_count / total_count) * 100 if total_count > 0 else 0
-
         test_case_id = request.GET.get("test_case_id")
 
-        # 現在のテストケースが何番目かを計算
+        # 現在のテストケースが何番目かを計算する
         current_execution_number = 1
         if test_case_id:
             for execution in test_session.executions.all():
@@ -217,6 +213,9 @@ class TestSessionExecuteView(LoginRequiredMixin, View):
                     break
                 current_execution_number += 1
 
+        total_count = executions.count()
+        completed_count = executions.exclude(status="NOT_TESTED").count()
+        progress = (completed_count / total_count) * 100 if total_count > 0 else 0
         context = {
             "test_session": test_session,
             "total_count": total_count,

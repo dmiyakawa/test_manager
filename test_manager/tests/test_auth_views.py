@@ -138,7 +138,7 @@ class TestUserManagementViews:
         )
         assert response.status_code == 302
         assert response.url == reverse("user_list")
-        
+
         regular_user.refresh_from_db()
         assert regular_user.first_name == new_first_name
         assert regular_user.last_name == new_last_name
@@ -147,7 +147,7 @@ class TestUserManagementViews:
         response = client.get(response.url)
         assert response.status_code == 200
         assert response.context is not None
-        messages = [m.message for m in list(response.context['messages'])]
+        messages = [m.message for m in list(response.context["messages"])]
         assert "ユーザー情報を更新しました。" in messages
 
     def test_user_token_manage_view_permissions_and_functionality(

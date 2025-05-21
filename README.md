@@ -71,6 +71,16 @@ uv run pytest
 
 ## API
 
+#### 基本
+
+APIトークンを必須とする
+
+```bash
+curl -sS \
+    -H "Authorization: Token db295f9804e905c3106fc68bab8c13e1c12777a7" \
+    "http://localhost:8000/api/projects/3/testsuites/?include_cases=true"
+```
+
 #### OpenAPI 関連
 
 APIドキュメントの自動生成を目的に[drf-speculator](https://github.com/tfranzel/drf-spectacular/)を導入しています。

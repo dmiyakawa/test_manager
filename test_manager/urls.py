@@ -19,6 +19,13 @@ urlpatterns = [
         "admin-dashboard/", views.AdminDashboardView.as_view(), name="admin_dashboard"
     ),
     path("csv/export/", views_csv.CSVExportView.as_view(), name="csv_export"),
+    path("users/", views.UserListView.as_view(), name="user_list"),
+    path("users/<int:pk>/edit/", views.UserUpdateView.as_view(), name="user_update"),
+    path(
+        "users/<int:pk>/token/",
+        views.UserTokenManageView.as_view(),
+        name="user_token_manage",
+    ),
     path(
         "project/<int:project_id>/csv/export/",
         views_csv.ProjectCSVExportView.as_view(),
@@ -118,13 +125,20 @@ urlpatterns = [
     path(
         "api/api-token-auth/", authtoken_views.obtain_auth_token, name="api_token_auth"
     ),
-    # User management
-    path("users/", views.UserListView.as_view(), name="user_list"),
-    path("users/<int:pk>/edit/", views.UserUpdateView.as_view(), name="user_update"),
     path(
-        "users/<int:pk>/token/",
-        views.UserTokenManageView.as_view(),
-        name="user_token_manage",
+        "api/projects/<int:project_id>/testsuites/",
+        api.ProjectTestSuiteList.as_view(),
+        name="project-test-suite-list",
+    ),
+    path(
+        "api/test-sessions/",
+        api.TestSessionCreate.as_view(),
+        name="test-session-create",
+    ),
+    path(
+        "api/test-sessions/<int:pk>/execute/",
+        api.execute_test_case,
+        name="execute-test-case",
     ),
 ]
 
