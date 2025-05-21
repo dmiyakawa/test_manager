@@ -58,3 +58,9 @@ class TestCaseForm(forms.ModelForm):
     class Meta:
         model = TestCase
         fields = ["title", "description", "prerequisites", "status", "priority"]
+
+
+class UserEditForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name"]

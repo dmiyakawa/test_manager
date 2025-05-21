@@ -1,8 +1,16 @@
 from django.contrib import admin
 from django.contrib import admin
 from django.urls import path, include
-from . import views, views_csv, api
+
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularSwaggerView,
+    SpectacularRedocView,
+)
+from rest_framework.authtoken import views as authtoken_views
 from rest_framework.urlpatterns import format_suffix_patterns
+
+from . import views, views_csv, api
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -95,7 +103,29 @@ urlpatterns = [
     path(
         "test-sessions/", views.TestSessionListView.as_view(), name="test_session_list"
     ),
-    path("projects/", api.ProjectList.as_view(), name="project-list"),
+    path("api/projects/", api.ProjectList.as_view(), name="project-list"),
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/schema/swagger-ui/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger-ui",
+    ),
+    path(
+        "api/schema/redoc/",
+        SpectacularRedocView.as_view(url_name="schema"),
+        name="redoc",
+    ),
+    path(
+        "api/api-token-auth/", authtoken_views.obtain_auth_token, name="api_token_auth"
+    ),
+    # User management
+    path("users/", views.UserListView.as_view(), name="user_list"),
+    path("users/<int:pk>/edit/", views.UserUpdateView.as_view(), name="user_update"),
+    path(
+        "users/<int:pk>/token/",
+        views.UserTokenManageView.as_view(),
+        name="user_token_manage",
+    ),
 ]
 
 urlpatterns = format_suffix_patterns(urlpatterns)

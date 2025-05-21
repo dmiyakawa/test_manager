@@ -24,8 +24,10 @@ from .forms import (
     TestSuiteForm,
     TestCaseForm,
     TestStepFormSet,
+    UserEditForm,
 )
 from .mixins import ProjectManagerRequired, TestEditorRequired, TestExecutorRequired
+from rest_framework.authtoken.models import Token
 
 User = get_user_model()
 
@@ -518,6 +520,60 @@ class TestStepListView(TestEditorRequired, View):
 
     def get_permission_object(self):
         return get_object_or_404(TestCase, pk=self.kwargs["case_pk"]).suite.project
+
+
+class UserListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
+    model = User
+    template_name = "test_manager/user_management/user_list.html"
+    context_object_name = "users"
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def get_queryset(self):
+        return User.objects.all().order_by("username")
+
+
+class UserUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+    model = User
+    form_class = UserEditForm
+    template_name = "test_manager/user_management/user_form.html"
+    success_url = reverse_lazy("user_list")
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def form_valid(self, form):
+        messages.success(self.request, "ユーザー情報を更新しました。")
+        form.save()
+        return super().form_valid(form)
+
+
+class UserTokenManageView(LoginRequiredMixin, UserPassesTestMixin, View):
+    template_name = "test_manager/user_management/user_token.html"
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def get(self, request, *args, **kwargs):
+        user = get_object_or_404(User, pk=kwargs["pk"])
+        token, created = Token.objects.get_or_create(user=user)
+        if created:
+            messages.info(request, f"{user.username} のAPIトークンを新規発行しました。")
+        return render(
+            request, self.template_name, {"target_user": user, "token": token}
+        )
+
+    def post(self, request, *args, **kwargs):
+        user = get_object_or_404(User, pk=kwargs["pk"])
+        # Existing token, if any, will be deleted and a new one created by get_or_create
+        # To force re-generation, delete it first
+        Token.objects.filter(user=user).delete()
+        token = Token.objects.create(user=user)
+        messages.success(request, f"{user.username} のAPIトークンを再発行しました。")
+        return render(
+            request, self.template_name, {"target_user": user, "token": token}
+        )
 
 
 class TestCaseDetailView(LoginRequiredMixin, DetailView):

@@ -69,6 +69,21 @@ uv run manage.py runserver
 uv run pytest
 ```
 
+## API
+
+#### OpenAPI 関連
+
+APIドキュメントの自動生成を目的に[drf-speculator](https://github.com/tfranzel/drf-spectacular/)を導入しています。
+
+* api/schema/ ... schema.yml をダウンロード
+* api/schema/swagger-ui/ ... Swagger UI
+* api/schema/redoc/ ... redoc UI
+
+```bash
+uv run manage.py spectacular --color --file schema.yml
+docker run -p 8080:8080 -e SWAGGER_JSON=/schema.yml -v ${PWD}/schema.yml:/schema.yml swaggerapi/swagger-ui
+```
+
 
 ## ライセンス
 
@@ -78,3 +93,9 @@ uv run pytest
 - Project一覧APIを追加
     - Django Rest Frameworkによる実装を `views.py` から `api.py` に分離しました。
     - `urls.py` を更新し、`api.py` の `ProjectList` ビューを使用するようにしました。
+- API認証機能の追加
+    - Django REST Framework の `TokenAuthentication` を導入し、API呼び出しに認証トークンを必須としました。
+    - ユーザーは `/api/api-token-auth/` エンドポイントで認証情報を送信することでAPIトークンを取得できます。
+- ユーザー管理機能の追加
+    - 管理者向けにユーザー一覧、ユーザー情報（姓名）編集、APIトークン発行・再発行機能を持つ画面を追加しました。
+    - `/users/` からアクセス可能です。

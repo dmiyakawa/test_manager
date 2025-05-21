@@ -39,24 +39,6 @@ class TestSuite(models.Model):
         return self.name
 
 
-class TestStep(models.Model):
-    test_case = models.ForeignKey(
-        "TestCase", on_delete=models.CASCADE, related_name="steps"
-    )
-    order = models.PositiveIntegerField()
-    description = models.TextField(help_text="実行する操作の内容")
-    expected_result = models.TextField(help_text="この操作で期待される結果", blank=True)
-    created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ["order"]
-        unique_together = ["test_case", "order"]
-
-    def __str__(self):
-        return f"ステップ {self.order}: {self.description[:50]}"
-
-
 class TestCase(models.Model):
     STATUS_CHOICES = [
         ("DRAFT", "下書き"),
@@ -91,6 +73,24 @@ class TestCase(models.Model):
 
     def get_ordered_steps(self):
         return self.steps.all()
+
+
+class TestStep(models.Model):
+    test_case = models.ForeignKey(
+        "TestCase", on_delete=models.CASCADE, related_name="steps"
+    )
+    order = models.PositiveIntegerField()
+    description = models.TextField(help_text="実行する操作の内容")
+    expected_result = models.TextField(help_text="この操作で期待される結果", blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["order"]
+        unique_together = ["test_case", "order"]
+
+    def __str__(self):
+        return f"ステップ {self.order}: {self.description[:50]}"
 
 
 class TestSession(models.Model):

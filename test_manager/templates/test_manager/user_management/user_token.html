@@ -1,0 +1,28 @@
+{% extends "test_manager/base.html" %}
+
+{% block title %}APIトークン管理{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>APIトークン管理: {{ target_user.username }}</h2>
+
+    {% if token %}
+    <div class="alert alert-info mt-3">
+        <p>現在のAPIトークン:</p>
+        <pre><code>{{ token.key }}</code></pre>
+    </div>
+    {% else %}
+    <div class="alert alert-warning mt-3">
+        <p>APIトークンはまだ発行されていません。</p>
+    </div>
+    {% endif %}
+
+    <form method="post" class="mt-3">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger" onclick="return confirm('APIトークンを再発行しますか？既存のトークンは無効になります。');">
+            APIトークンを再発行
+        </button>
+        <a href="{% url 'user_list' %}" class="btn btn-secondary">戻る</a>
+    </form>
+</div>
+{% endblock %}
