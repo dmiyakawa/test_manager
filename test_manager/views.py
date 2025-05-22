@@ -178,6 +178,9 @@ class TestSessionCreateView(TestExecutorRequired, CreateView):
         selected_suites = self.request.POST.getlist("selected_suites")
         self.object.available_suites.set(selected_suites)
 
+        selected_cases = self.request.POST.getlist("selected_cases")
+        _logger.info(f"selected_cases: {selected_cases}")
+
         # TestExecutionを初期化
         self.object.initialize_executions()
 

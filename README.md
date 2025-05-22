@@ -81,6 +81,7 @@ curl -sS \
     "http://localhost:8000/api/projects/3/testsuites/?include_cases=true"
 ```
 
+
 #### OpenAPI 関連
 
 APIドキュメントの自動生成を目的に[drf-speculator](https://github.com/tfranzel/drf-spectacular/)を導入しています。
