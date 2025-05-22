@@ -13,6 +13,7 @@ class TestStepSerializer(serializers.ModelSerializer):
         model = TestStep
         fields = ["id", "order", "description", "expected_result"]
 
+    __test__ = False
 
 class TestCaseSerializer(serializers.ModelSerializer):
     steps = TestStepSerializer(many=True, read_only=True)
@@ -20,6 +21,8 @@ class TestCaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = TestCase
         fields = ["id", "title", "description", "status", "priority", "steps"]
+
+    __test__ = False
 
 
 class TestSuiteSerializer(serializers.ModelSerializer):
@@ -36,6 +39,8 @@ class TestSuiteSerializer(serializers.ModelSerializer):
         # テストケースが「一つもない」ことと、テストケースを返却していないことを区別するため
         # テストケースを返却していない場合として空のリストではなくNoneを返す
         return None
+
+    __test__ = False
 
 
 class TestSessionSerializer(serializers.ModelSerializer):

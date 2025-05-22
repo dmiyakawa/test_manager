@@ -38,6 +38,8 @@ class TestSuite(models.Model):
     def __str__(self):
         return self.name
 
+    __test__ = False
+
 
 class TestCase(models.Model):
     STATUS_CHOICES = [
@@ -74,6 +76,8 @@ class TestCase(models.Model):
     def get_ordered_steps(self):
         return self.steps.all()
 
+    __test__ = False
+
 
 class TestStep(models.Model):
     test_case = models.ForeignKey(
@@ -91,6 +95,8 @@ class TestStep(models.Model):
 
     def __str__(self):
         return f"ステップ {self.order}: {self.description[:50]}"
+
+    __test__ = False
 
 
 class TestSession(models.Model):
@@ -144,6 +150,8 @@ class TestSession(models.Model):
             ret.append((test_case, execution))
         return ret
 
+    __test__ = False
+
 
 class TestExecution(models.Model):
     STATUS_CHOICES = [
@@ -174,3 +182,5 @@ class TestExecution(models.Model):
             return f"{self.test_case.title} - ({self.status})"
         else:
             return f"{self.test_case.title} - {self.status} (executed_at: {self.executed_at.strftime('%Y-%m-%d %H:%M')})"
+
+    __test__ = False
