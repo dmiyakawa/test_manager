@@ -136,7 +136,7 @@ urlpatterns = [
         name="test-session-create",
     ),
     path(
-        "api/test-sessions/<int:pk>/execute/",
+        "api/test-sessions/<int:test_session_id>/execute/",
         api.execute_test_case,
         name="execute-test-case",
     ),

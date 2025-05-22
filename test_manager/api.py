@@ -78,25 +78,57 @@ class TestSessionCreate(generics.CreateAPIView):
         )
 
 
-@api_view(["POST"])
+@api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
-def execute_test_case(request, pk):
+def execute_test_case(request, test_session_id):
+    """
+    POSTの場合は指定されたTestCaseについて状況を記録する。
+    """
     try:
-        test_session = get_object_or_404(TestSession, pk=pk)
-        test_case = get_object_or_404(TestCase, pk=request.data.get("test_case_id"))
-        execution = test_session.executions.get(test_case=test_case)
+        test_session = TestSession.objects.get(id=test_session_id)
 
-        # テスト実行フォームからの送信の場合
-        execution.status = request.data["status"]
-        execution.executed_by = test_session.executed_by
-        execution.executed_at = timezone.now()
-        execution.environment = test_session.environment
-        execution.result_detail = request.data.get("result_detail", "")
-        execution.notes = request.data.get("notes", "")
-        execution.save()
+        if request.method == 'POST':
+            test_case = TestCase.objects.get(id=request.data.get("test_case_id"))
+            execution = test_session.executions.get(test_case=test_case)
 
-        return Response(status=status.HTTP_200_OK)
+            # テスト実行フォームからの送信の場合
+            execution.status = request.data["status"]
+            execution.executed_by = test_session.executed_by
+            execution.executed_at = timezone.now()
+            execution.environment = test_session.environment
+            execution.result_detail = request.data.get("result_detail", "")
+            execution.notes = request.data.get("notes", "")
+            execution.save()
 
+        executions = test_session.executions.all()
+        total_count = executions.count()
+        completed_count = executions.exclude(status="NOT_TESTED").count()
+        progress = (completed_count / total_count) * 100 if total_count > 0 else 0
+
+        remaining_test_cases = [TestCaseSerializer(ne.test_case).data for ne in executions.filter(status="NOT_TESTED")]
+        if not remaining_test_cases:
+            if not test_session.completed_at:
+                test_session.complete()
+            response_data = {
+                "test_session_id": test_session.id,
+                "test_session_name": test_session.name,
+                "completed": True,
+                "total_count": total_count,
+                "completed_count": completed_count,
+                "progress": 100,
+                "remaining": [],
+            }
+        else:
+            response_data = {
+                "test_session_id": test_session.id,
+                "test_session_name": test_session.name,
+                "completed": False,
+                "total_count": total_count,
+                "completed_count": completed_count,
+                "progress": progress,
+                "remaining": remaining_test_cases,
+            }
+        return Response(response_data, status=status.HTTP_200_OK)
     except TestSession.DoesNotExist:
         return Response(
             {"error": "TestSession not found"}, status=status.HTTP_404_NOT_FOUND

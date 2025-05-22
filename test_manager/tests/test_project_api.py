@@ -84,40 +84,58 @@ def test_create_test_session(api_client, project, test_suite, test_case):
     assert test_session.executions.count() == 1
 
 
-def test_execute_test_case(api_client, project, test_suite, test_case):
-    test_session = TestSession.objects.create(
-        project=project,
-        name="Test Session 1",
-        executed_by="testuser",
-        environment="Test Env",
+def test_create_test_session_without_available_suites(api_client, project):
+    url = reverse("test-session-create")
+    data = {
+        "project": project.id,
+        "name": "Test Session 1",
+        "description": "Test Description",
+        "executed_by": "testuser",
+        "environment": "Test Env",
+    }
+    response = api_client.post(
+        url, data=json.dumps(data), content_type="application/json"
     )
-    test_session.available_suites.add(test_suite)
-    execution = TestExecution.objects.create(
-        test_session=test_session,
-        test_case=test_case,
-        executed_by="testuser",
-        environment="Test Env",
-    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    url = reverse("execute-test-case", kwargs={"pk": test_session.id})
+
+def test_get_execute_test_case(api_client, project, test_suite, test_case):
+    """TestExecutionのGET APIをテストする。"""
+    test_session = TestSession.objects.create(project=project, name="Test Session")
+    test_session.available_suites.add(test_suite)
+    execution = TestExecution.objects.create(test_session=test_session, test_case=test_case)
+    url = reverse("execute-test-case", kwargs={"test_session_id": test_session.id})
+    response = api_client.get(url)
+    assert response.status_code == status.HTTP_200_OK
+    response_data = response.json()
+    assert response_data["test_session_id"] == test_session.id
+
+
+def test_post_execute_test_case(api_client, project, test_suite, test_case):
+    test_session = TestSession.objects.create(project=project, name="Test Session 1", executed_by="testuser", environment="Test Env",)
+    test_session.available_suites.add(test_suite)
+    execution = TestExecution.objects.create(test_session=test_session, test_case=test_case)
+    url = reverse("execute-test-case", kwargs={"test_session_id": test_session.id})
     data = {
         "test_case_id": test_case.id,
         "status": "PASS",
         "result_detail": "Test Result",
         "notes": "Test Notes",
     }
-    response = api_client.post(
-        url, data=json.dumps(data), content_type="application/json"
-    )
+    
+    response = api_client.post(url, data=json.dumps(data), content_type="application/json")
+    import sys
+    print(response.json(), file=sys.stderr)
     assert response.status_code == status.HTTP_200_OK
-    execution.refresh_from_db()
+
+    execution = TestExecution.objects.get(test_session=test_session, test_case=test_case)
     assert execution.status == "PASS"
     assert execution.result_detail == "Test Result"
     assert execution.notes == "Test Notes"
 
 
 def test_execute_test_case_api_not_found(api_client, project, test_suite, test_case):
-    url = reverse("execute-test-case", kwargs={"pk": 999})
+    url = reverse("execute-test-case", kwargs={"test_session_id": 999})
     data = {
         "test_case_id": test_case.id,
         "status": "PASS",
@@ -127,4 +145,10 @@ def test_execute_test_case_api_not_found(api_client, project, test_suite, test_c
     response = api_client.post(
         url, data=json.dumps(data), content_type="application/json"
     )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_get_execute_test_case_not_found(api_client, project, test_suite, test_case):
+    url = reverse("execute-test-case", kwargs={"test_session_id": 999})
+    response = api_client.get(url)
     assert response.status_code == status.HTTP_404_NOT_FOUND
