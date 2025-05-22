@@ -87,7 +87,7 @@ def execute_test_case(request, test_session_id):
     try:
         test_session = TestSession.objects.get(id=test_session_id)
 
-        if request.method == 'POST':
+        if request.method == "POST":
             test_case = TestCase.objects.get(id=request.data.get("test_case_id"))
             execution = test_session.executions.get(test_case=test_case)
 
@@ -105,7 +105,10 @@ def execute_test_case(request, test_session_id):
         completed_count = executions.exclude(status="NOT_TESTED").count()
         progress = (completed_count / total_count) * 100 if total_count > 0 else 0
 
-        remaining_test_cases = [TestCaseSerializer(ne.test_case).data for ne in executions.filter(status="NOT_TESTED")]
+        remaining_test_cases = [
+            TestCaseSerializer(ne.test_case).data
+            for ne in executions.filter(status="NOT_TESTED")
+        ]
         if not remaining_test_cases:
             if not test_session.completed_at:
                 test_session.complete()
