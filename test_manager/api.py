@@ -42,7 +42,8 @@ class TestSessionCreate(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        project = get_object_or_404(Project, pk=serializer.validated_data["project"].id)
+        project_id = self.kwargs["project_id"]
+        project = get_object_or_404(Project, pk=project_id)
         test_session = serializer.save(
             executed_by=request.user.username, project=project
         )
@@ -58,18 +59,7 @@ class TestSessionCreate(generics.CreateAPIView):
             available_suites = TestSuite.objects.filter(project=project)
 
         test_session.available_suites.set(available_suites)
-
-        for suite in available_suites:
-            test_cases = TestCase.objects.filter(suite=suite)
-            for test_case in test_cases:
-                TestExecution.objects.get_or_create(
-                    test_session=test_session,
-                    test_case=test_case,
-                    defaults={
-                        "environment": test_session.environment,
-                        "executed_by": test_session.executed_by,
-                    },
-                )
+        test_session.initialize_executions()
 
         headers = self.get_success_headers(serializer.data)
         return Response(

@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from .models import Project, TestSuite, TestCase, TestStep, TestSession
+from django.shortcuts import get_object_or_404
+from .models import TestSuite, TestExecution
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -55,3 +57,11 @@ class TestSessionSerializer(serializers.ModelSerializer):
             "environment",
             "available_suites",
         ]
+
+    def create(self, validated_data):
+        available_suites_data = validated_data.pop("available_suites", [])
+        test_session = TestSession.objects.create(**validated_data)
+        test_session.available_suites.set(available_suites_data)
+        test_session.initialize_executions()
+
+        return test_session

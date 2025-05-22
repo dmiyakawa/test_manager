@@ -139,7 +139,7 @@ urlpatterns = [
     ),
     # テストセッションAPI
     path(
-        "api/test-sessions/",
+        "api/projects/<int:project_id>/test-sessions/",
         api.TestSessionCreate.as_view(),
         name="test-session-create",
     ),

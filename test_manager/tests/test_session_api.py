@@ -32,8 +32,8 @@ def api_client(db):
     return api_client
 
 
-def test_create_test_session(api_client, project, test_suite):
-    url = reverse("test-session-create")
+def test_create_test_session(api_client, project, test_suite, test_case):
+    url = reverse("test-session-create", kwargs={"project_id": project.id})
     data = {
         "project": project.id,
         "name": "Test Session 1",
@@ -54,7 +54,7 @@ def test_create_test_session(api_client, project, test_suite):
 
 
 def test_create_test_session_without_available_suites(api_client, project):
-    url = reverse("test-session-create")
+    url = reverse("test-session-create", kwargs={"project_id": project.id})
     data = {
         "project": project.id,
         "name": "Test Session 1",
