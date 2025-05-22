@@ -116,7 +116,7 @@ def execute_test_case(request, test_session_id):
                 "total_count": total_count,
                 "completed_count": completed_count,
                 "progress": 100,
-                "remaining": [],
+                "remaining_test_cases": [],
             }
         else:
             response_data = {
@@ -126,7 +126,7 @@ def execute_test_case(request, test_session_id):
                 "total_count": total_count,
                 "completed_count": completed_count,
                 "progress": progress,
-                "remaining": remaining_test_cases,
+                "remaining_test_cases": remaining_test_cases,
             }
         return Response(response_data, status=status.HTTP_200_OK)
     except TestSession.DoesNotExist:

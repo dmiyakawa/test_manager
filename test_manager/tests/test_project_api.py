@@ -109,23 +109,33 @@ def test_get_execute_test_case(api_client, project, test_suite, test_case):
     assert response.status_code == status.HTTP_200_OK
     response_data = response.json()
     assert response_data["test_session_id"] == test_session.id
+    assert 'remaining_test_cases' in response_data
 
 
-def test_post_execute_test_case(api_client, project, test_suite, test_case):
+def test_execute_test_case_completion(api_client, project, test_suite, test_case):
+    """1件のテストケースがあるTestExecutionでその1件をPASSで完了させた際のテスト"""
     test_session = TestSession.objects.create(project=project, name="Test Session 1", executed_by="testuser", environment="Test Env",)
     test_session.available_suites.add(test_suite)
     execution = TestExecution.objects.create(test_session=test_session, test_case=test_case)
-    url = reverse("execute-test-case", kwargs={"test_session_id": test_session.id})
+    execution_url = reverse("execute-test-case", kwargs={"test_session_id": test_session.id})
+
+    # GETして1件残っていることを確認する
+    response = api_client.get(execution_url)
+    assert response.status_code == status.HTTP_200_OK
+    response_data = response.json()
+    assert response_data["test_session_id"] == test_session.id
+    assert 'remaining_test_cases' in response_data
+    assert len(response_data['remaining_test_cases']) == 1
+    assert response_data['remaining_test_cases'][0]["id"] == test_case.id
+
+    # 対象の1件をPASSで完了とする
     data = {
         "test_case_id": test_case.id,
         "status": "PASS",
         "result_detail": "Test Result",
         "notes": "Test Notes",
     }
-    
-    response = api_client.post(url, data=json.dumps(data), content_type="application/json")
-    import sys
-    print(response.json(), file=sys.stderr)
+    response = api_client.post(execution_url, data=json.dumps(data), content_type="application/json")
     assert response.status_code == status.HTTP_200_OK
 
     execution = TestExecution.objects.get(test_session=test_session, test_case=test_case)
@@ -133,8 +143,21 @@ def test_post_execute_test_case(api_client, project, test_suite, test_case):
     assert execution.result_detail == "Test Result"
     assert execution.notes == "Test Notes"
 
+    response = api_client.get(execution_url)
+    assert response.status_code == status.HTTP_200_OK
+    response_data = response.json()
+    assert response_data["test_session_id"] == test_session.id
+    assert 'remaining_test_cases' in response_data
+    assert len(response_data['remaining_test_cases']) == 0
 
-def test_execute_test_case_api_not_found(api_client, project, test_suite, test_case):
+
+def test_get_execute_test_case_not_found(api_client, project, test_suite, test_case):
+    url = reverse("execute-test-case", kwargs={"test_session_id": 999})
+    response = api_client.get(url)
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_post_execute_test_case_api_not_found(api_client, project, test_suite, test_case):
     url = reverse("execute-test-case", kwargs={"test_session_id": 999})
     data = {
         "test_case_id": test_case.id,
@@ -145,10 +168,4 @@ def test_execute_test_case_api_not_found(api_client, project, test_suite, test_c
     response = api_client.post(
         url, data=json.dumps(data), content_type="application/json"
     )
-    assert response.status_code == status.HTTP_404_NOT_FOUND
-
-
-def test_get_execute_test_case_not_found(api_client, project, test_suite, test_case):
-    url = reverse("execute-test-case", kwargs={"test_session_id": 999})
-    response = api_client.get(url)
     assert response.status_code == status.HTTP_404_NOT_FOUND
