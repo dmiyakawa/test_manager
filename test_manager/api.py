@@ -1,5 +1,4 @@
-from rest_framework import generics
-from rest_framework import permissions
+from rest_framework import generics, permissions
 from rest_framework import status
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
@@ -144,3 +143,9 @@ def execute_test_case(request, test_session_id):
         return Response(
             {"error": "TestExecution not found"}, status=status.HTTP_404_NOT_FOUND
         )
+
+
+class TestCaseDetail(generics.RetrieveAPIView):
+    queryset = TestCase.objects.all()
+    serializer_class = TestCaseSerializer
+    permission_classes = [permissions.IsAuthenticated]

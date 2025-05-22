@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Project, TestSuite, TestCase, TestSession
+from .models import Project, TestSuite, TestCase, TestStep, TestSession
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -8,10 +8,18 @@ class ProjectSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "description"]
 
 
+class TestStepSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TestStep
+        fields = ["id", "order", "description", "expected_result"]
+
+
 class TestCaseSerializer(serializers.ModelSerializer):
+    steps = TestStepSerializer(many=True, read_only=True)
+
     class Meta:
         model = TestCase
-        fields = ["id", "title", "description", "status", "priority"]
+        fields = ["id", "title", "description", "status", "priority", "steps"]
 
 
 class TestSuiteSerializer(serializers.ModelSerializer):
@@ -25,7 +33,9 @@ class TestSuiteSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request and request.query_params.get("include_cases") == "true":
             return TestCaseSerializer(obj.test_cases.all(), many=True).data
-        return []
+        # テストケースが「一つもない」ことと、テストケースを返却していないことを区別するため
+        # テストケースを返却していない場合として空のリストではなくNoneを返す
+        return None
 
 
 class TestSessionSerializer(serializers.ModelSerializer):

@@ -110,7 +110,7 @@ urlpatterns = [
     path(
         "test-sessions/", views.TestSessionListView.as_view(), name="test_session_list"
     ),
-    path("api/projects/", api.ProjectList.as_view(), name="project-list"),
+    # APIスキーマ
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/schema/swagger-ui/",
@@ -125,11 +125,19 @@ urlpatterns = [
     path(
         "api/api-token-auth/", authtoken_views.obtain_auth_token, name="api_token_auth"
     ),
+    # プロジェクトAPI
+    path("api/projects/", api.ProjectList.as_view(), name="project-list"),
     path(
         "api/projects/<int:project_id>/testsuites/",
         api.ProjectTestSuiteList.as_view(),
         name="project-test-suite-list",
     ),
+    path(
+        "api/testcases/<int:pk>/",
+        api.TestCaseDetail.as_view(),
+        name="testcase-detail",
+    ),
+    # テストセッションAPI
     path(
         "api/test-sessions/",
         api.TestSessionCreate.as_view(),
