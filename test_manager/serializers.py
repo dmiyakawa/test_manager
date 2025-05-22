@@ -17,6 +17,7 @@ class TestStepSerializer(serializers.ModelSerializer):
 
     __test__ = False
 
+
 class TestCaseSerializer(serializers.ModelSerializer):
     steps = TestStepSerializer(many=True, read_only=True)
 
@@ -46,6 +47,8 @@ class TestSuiteSerializer(serializers.ModelSerializer):
 
 
 class TestSessionSerializer(serializers.ModelSerializer):
+    completed = serializers.SerializerMethodField()
+
     class Meta:
         model = TestSession
         fields = [
@@ -56,7 +59,14 @@ class TestSessionSerializer(serializers.ModelSerializer):
             "executed_by",
             "environment",
             "available_suites",
+            "completed",
         ]
+
+    def get_completed(self, obj):
+        executions = obj.executions.all()
+        if not executions.exists():
+            return True
+        return all(execution.status != "NOT_TESTED" for execution in executions)
 
     def create(self, validated_data):
         available_suites_data = validated_data.pop("available_suites", [])

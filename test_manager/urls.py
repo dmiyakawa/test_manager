@@ -137,12 +137,12 @@ urlpatterns = [
         api.TestCaseDetail.as_view(),
         name="testcase-detail",
     ),
-    # テストセッションAPI
     path(
         "api/projects/<int:project_id>/test-sessions/",
-        api.TestSessionCreate.as_view(),
+        api.TestSessionList.as_view(),
         name="test-session-create",
     ),
+    # テストセッションAPI
     path(
         "api/test-sessions/<int:test_session_id>/execute/",
         api.execute_test_case,

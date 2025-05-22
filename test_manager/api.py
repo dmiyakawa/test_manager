@@ -35,9 +35,14 @@ class ProjectTestSuiteList(generics.ListAPIView):
         return context
 
 
-class TestSessionCreate(generics.CreateAPIView):
+class TestSessionList(generics.ListCreateAPIView):
     serializer_class = TestSessionSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        project_id = self.kwargs["project_id"]
+        project = get_object_or_404(Project, pk=project_id)
+        return TestSession.objects.filter(project=project).order_by("-started_at")
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -48,15 +53,18 @@ class TestSessionCreate(generics.CreateAPIView):
             executed_by=request.user.username, project=project
         )
 
-        # 選択されたスイートを設定する
         available_suites_data = request.data.get("available_suites", [])
-        if available_suites_data:
+        if (
+            not available_suites_data
+        ):  # If not provided, use all suites from the project
+            available_suites = TestSuite.objects.filter(project=project)
+        else:
             available_suites = []
             for suite_id in available_suites_data:
-                suite = get_object_or_404(TestSuite, pk=suite_id)
+                suite = get_object_or_404(
+                    TestSuite, pk=suite_id, project=project
+                )  # Ensure suite belongs to project
                 available_suites.append(suite)
-        else:
-            available_suites = TestSuite.objects.filter(project=project)
 
         test_session.available_suites.set(available_suites)
         test_session.initialize_executions()
@@ -74,7 +82,7 @@ def execute_test_case(request, test_session_id):
     POSTの場合は指定されたTestCaseについて状況を記録する。
     """
     try:
-        test_session = TestSession.objects.get(id=test_session_id)
+        test_session = get_object_or_404(TestSession, pk=test_session_id)
 
         if request.method == "POST":
             test_case = TestCase.objects.get(id=request.data.get("test_case_id"))

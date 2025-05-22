@@ -32,6 +32,41 @@ def api_client(db):
     return api_client
 
 
+@pytest.fixture
+def another_project(db):
+    return Project.objects.create(name="Another Test Project")
+
+
+@pytest.fixture
+def test_session1_project1(db, project, test_suite):
+    ts = TestSession.objects.create(project=project, name="Session 1 for Project 1")
+    ts.available_suites.add(test_suite)
+    return ts
+
+
+@pytest.fixture
+def test_session2_project1(db, project, test_suite):
+    ts = TestSession.objects.create(project=project, name="Session 2 for Project 1")
+    ts.available_suites.add(test_suite)
+    return ts
+
+
+@pytest.fixture
+def test_session1_project2(
+    db, another_project, test_suite
+):  # Assuming test_suite can be shared or create a new one
+    # If test_suite is tied to a specific project, you'll need a suite for another_project
+    # For simplicity, let's assume we need a suite for another_project
+    another_suite = TestSuite.objects.create(
+        project=another_project, name="Suite for Another Project"
+    )
+    ts = TestSession.objects.create(
+        project=another_project, name="Session 1 for Project 2"
+    )
+    ts.available_suites.add(another_suite)
+    return ts
+
+
 def test_create_test_session(api_client, project, test_suite, test_case):
     url = reverse("test-session-create", kwargs={"project_id": project.id})
     data = {
@@ -154,4 +189,77 @@ def test_post_execute_test_case_api_not_found(
     response = api_client.post(
         url, data=json.dumps(data), content_type="application/json"
     )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_list_project_test_sessions(
+    api_client,
+    project,
+    test_session1_project1,
+    test_session2_project1,
+    test_session1_project2,
+):
+    url = reverse("test-session-create", kwargs={"project_id": project.id})
+    response = api_client.get(url)
+
+    assert response.status_code == status.HTTP_200_OK
+    assert len(response.data) == 2
+    response_session_names = sorted([session["name"] for session in response.data])
+    expected_session_names = sorted(
+        [test_session1_project1.name, test_session2_project1.name]
+    )
+    assert response_session_names == expected_session_names
+    # Check if 'project' field in response matches project.id
+    for session_data in response.data:
+        assert session_data["project"] == project.id
+
+
+def test_list_project_test_sessions_with_completion_status(
+    api_client, project, test_suite
+):
+    """
+    Test that the 'completed' flag is correctly returned in the TestSession list API response.
+    """
+    # Create a test session
+    test_session = TestSession.objects.create(project=project, name="Test Session 1")
+    test_session.available_suites.add(test_suite)
+
+    # Create a test case and execution
+    test_case = TestCase.objects.create(suite=test_suite, title="Test Case 1")
+    execution = TestExecution.objects.create(
+        test_session=test_session, test_case=test_case
+    )
+
+    url = reverse("test-session-create", kwargs={"project_id": project.id})
+
+    # Initially, the test session should not be completed
+    response = api_client.get(url)
+    assert response.status_code == status.HTTP_200_OK
+    assert len(response.data) == 1
+    assert response.data[0]["completed"] is False
+
+    # Mark the execution as PASS
+    execution.status = "PASS"
+    execution.save()
+
+    # Now, the test session should be completed
+    response = api_client.get(url)
+    assert response.status_code == status.HTTP_200_OK
+    assert len(response.data) == 1
+    assert response.data[0]["completed"] is True
+
+
+def test_list_project_test_sessions_empty(api_client, project):
+    url = reverse("test-session-create", kwargs={"project_id": project.id})
+    response = api_client.get(url)
+
+    assert response.status_code == status.HTTP_200_OK
+    assert len(response.data) == 0
+
+
+def test_list_project_test_sessions_non_existent_project(api_client):
+    non_existent_project_id = 9999
+    url = reverse("test-session-create", kwargs={"project_id": non_existent_project_id})
+    response = api_client.get(url)
+
     assert response.status_code == status.HTTP_404_NOT_FOUND
