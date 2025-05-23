@@ -38,22 +38,22 @@ def another_project(db):
 
 
 @pytest.fixture
-def test_session1_project1(db, project, test_suite):
+def test_session1_project1(db, project, test_suite, test_case):
     ts = TestSession.objects.create(project=project, name="Session 1 for Project 1")
-    ts.available_suites.add(test_suite)
+    TestExecution.objects.create(test_session=ts, test_case=test_case)
     return ts
 
 
 @pytest.fixture
-def test_session2_project1(db, project, test_suite):
+def test_session2_project1(db, project, test_suite, test_case):
     ts = TestSession.objects.create(project=project, name="Session 2 for Project 1")
-    ts.available_suites.add(test_suite)
+    TestExecution.objects.create(test_session=ts, test_case=test_case)
     return ts
 
 
 @pytest.fixture
 def test_session1_project2(
-    db, another_project, test_suite
+    db, another_project, test_suite, test_case
 ):  # Assuming test_suite can be shared or create a new one
     # If test_suite is tied to a specific project, you'll need a suite for another_project
     # For simplicity, let's assume we need a suite for another_project
@@ -63,19 +63,18 @@ def test_session1_project2(
     ts = TestSession.objects.create(
         project=another_project, name="Session 1 for Project 2"
     )
-    ts.available_suites.add(another_suite)
+    TestExecution.objects.create(test_session=ts, test_case=test_case)
     return ts
 
 
 def test_create_test_session(api_client, project, test_suite, test_case):
     url = reverse("test-session-create", kwargs={"project_id": project.id})
     data = {
-        "project": project.id,
         "name": "Test Session 1",
         "description": "Test Description",
         "executed_by": "testuser",
         "environment": "Test Env",
-        "available_suites": [test_suite.id],
+        "selected_case_ids": [test_case.id],
     }
     response = api_client.post(
         url, data=json.dumps(data), content_type="application/json"
@@ -86,12 +85,13 @@ def test_create_test_session(api_client, project, test_suite, test_case):
     assert TestSession.objects.count() == 1
     test_session = TestSession.objects.first()
     assert test_session.executions.count() == 1
+    execution = test_session.executions.first()
+    assert execution.test_case == test_case
 
 
-def test_create_test_session_without_available_suites(api_client, project):
+def test_create_test_session_without_selected_case_ids(api_client, project, test_suite, test_case):
     url = reverse("test-session-create", kwargs={"project_id": project.id})
     data = {
-        "project": project.id,
         "name": "Test Session 1",
         "description": "Test Description",
         "executed_by": "testuser",
@@ -101,12 +101,13 @@ def test_create_test_session_without_available_suites(api_client, project):
         url, data=json.dumps(data), content_type="application/json"
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST
+    # Optionally, check the content of the error response
+    # assert "selected_case_ids" in response.data
 
 
 def test_get_execute_test_case(api_client, project, test_suite, test_case):
     """TestExecutionのGET APIをテストする。"""
     test_session = TestSession.objects.create(project=project, name="Test Session")
-    test_session.available_suites.add(test_suite)
     execution = TestExecution.objects.create(
         test_session=test_session, test_case=test_case
     )
@@ -126,7 +127,6 @@ def test_execute_test_case_completion(api_client, project, test_suite, test_case
         executed_by="testuser",
         environment="Test Env",
     )
-    test_session.available_suites.add(test_suite)
     execution = TestExecution.objects.create(
         test_session=test_session, test_case=test_case
     )
@@ -214,18 +214,17 @@ def test_list_project_test_sessions(
         assert session_data["project"] == project.id
 
 
+
 def test_list_project_test_sessions_with_completion_status(
-    api_client, project, test_suite
+    api_client, project, test_suite, test_case
 ):
     """
     Test that the 'completed' flag is correctly returned in the TestSession list API response.
     """
     # Create a test session
     test_session = TestSession.objects.create(project=project, name="Test Session 1")
-    test_session.available_suites.add(test_suite)
 
     # Create a test case and execution
-    test_case = TestCase.objects.create(suite=test_suite, title="Test Case 1")
     execution = TestExecution.objects.create(
         test_session=test_session, test_case=test_case
     )

@@ -25,6 +25,7 @@ from .forms import (
     TestCaseForm,
     TestStepFormSet,
     UserEditForm,
+    TestSessionForm,  # Add TestSessionForm
 )
 from .mixins import ProjectManagerRequired, TestEditorRequired, TestExecutorRequired
 from rest_framework.authtoken.models import Token
@@ -53,6 +54,60 @@ class CSVManagementView(LoginRequiredMixin, UserPassesTestMixin, View):
 
     def get(self, request, *args, **kwargs):
         return render(request, self.template_name)
+
+
+class UserListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
+    model = User
+    template_name = "test_manager/user_management/user_list.html"
+    context_object_name = "users"
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def get_queryset(self):
+        return User.objects.all().order_by("username")
+
+
+class UserUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+    model = User
+    form_class = UserEditForm
+    template_name = "test_manager/user_management/user_form.html"
+    success_url = reverse_lazy("user_list")
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def form_valid(self, form):
+        messages.success(self.request, "ユーザー情報を更新しました。")
+        form.save()
+        return super().form_valid(form)
+
+
+class UserTokenManageView(LoginRequiredMixin, UserPassesTestMixin, View):
+    template_name = "test_manager/user_management/user_token.html"
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def get(self, request, *args, **kwargs):
+        user = get_object_or_404(User, pk=kwargs["pk"])
+        token, created = Token.objects.get_or_create(user=user)
+        if created:
+            messages.info(request, f"{user.username} のAPIトークンを新規発行しました。")
+        return render(
+            request, self.template_name, {"target_user": user, "token": token}
+        )
+
+    def post(self, request, *args, **kwargs):
+        user = get_object_or_404(User, pk=kwargs["pk"])
+        # Existing token, if any, will be deleted and a new one created by get_or_create
+        # To force re-generation, delete it first
+        Token.objects.filter(user=user).delete()
+        token = Token.objects.create(user=user)
+        messages.success(request, f"{user.username} のAPIトークンを再発行しました。")
+        return render(
+            request, self.template_name, {"target_user": user, "token": token}
+        )
 
 
 class ProjectCreateView(LoginRequiredMixin, CreateView):
@@ -149,48 +204,61 @@ class ProjectMemberRemoveView(ProjectManagerRequired, View):
 
 class TestSessionCreateView(TestExecutorRequired, CreateView):
     model = TestSession
+    form_class = TestSessionForm
     template_name = "test_manager/test_session_form.html"
-    fields = ["name", "description", "environment"]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        project = get_object_or_404(Project, pk=self.kwargs["project_pk"])
+        project = get_object_or_404(Project, pk=self.kwargs["pk"])
         context["project"] = project
+        _logger.debug(f"TestSessionCreateView.get_context_data({context})")
+        return context
 
+    def get_initial(self):
+        initial = super().get_initial()
+        project = get_object_or_404(Project, pk=self.kwargs["pk"])
         base_name = f"テストセッション ({date.today().strftime('%Y/%m/%d')})"
         name = base_name
         counter = 1
         while TestSession.objects.filter(project=project, name=name).exists():
             name = f"{base_name} ({counter})"
             counter += 1
-
-        context["initial_name"] = name
-        print(context)
-        return context
+        initial["name"] = name
+        initial["project"] = project
+        _logger.debug(f"TestSessionCreateView.get_initial({initial})")
+        return initial
 
     def form_valid(self, form):
-        # プロジェクトを設定
-        form.instance.project = get_object_or_404(Project, pk=self.kwargs["project_pk"])
+        form.instance.project = get_object_or_404(Project, pk=self.kwargs["pk"])
         form.instance.executed_by = self.request.user.username
+
+        # selected_cases is part of the form, so super().form_valid(form) will try to save it.
+        # However, ModelMultipleChoiceField for a M2M not on TestSession directly won't save.
+        # We need to handle selected_cases after the TestSession object (self.object) is created.
+
+        # Pop selected_cases from cleaned_data before calling super().form_valid()
+        # because TestSession model doesn't have a 'selected_cases' field.
+        selected_test_case_instances = form.cleaned_data.pop('selected_cases', [])
+
+        _logger.debug(f"TestSessionCreateView.form_valid 2: {selected_test_case_instances}")
+
+        # Now call super().form_valid(form) to save the TestSession instance
+        # This will create self.object
         response = super().form_valid(form)
 
-        # 選択されたスイートを設定
-        selected_suites = self.request.POST.getlist("selected_suites")
-        self.object.available_suites.set(selected_suites)
-
-        selected_cases = self.request.POST.getlist("selected_cases")
-        _logger.info(f"selected_cases: {selected_cases}")
-
-        # TestExecutionを初期化
-        self.object.initialize_executions()
+        # Now that self.object (TestSession instance) exists, initialize executions
+        if self.object and selected_test_case_instances:
+            self.object.initialize_executions(selected_test_case_instances)
 
         return response
 
     def get_success_url(self):
+        _logger.debug(f"TestSessionCreateView.get_success_url({self.object})")
         return reverse_lazy("test_session_execute", kwargs={"pk": self.object.pk})
 
     def get_permission_object(self):
-        return get_object_or_404(Project, pk=self.kwargs["project_pk"])
+        _logger.debug(f"TestSessionCreateView.get_permission_object()")
+        return get_object_or_404(Project, pk=self.kwargs["pk"])
 
 
 class TestSessionExecuteView(LoginRequiredMixin, View):
@@ -200,9 +268,27 @@ class TestSessionExecuteView(LoginRequiredMixin, View):
 
     def get(self, request, pk):
         test_session = get_object_or_404(TestSession, pk=pk)
-        executions = test_session.executions.all()
+        
+        # 次に実行するべきTestExecutionがないか確認する。
+        # もしそれがないようなら、TestSession詳細画面にリダイレクトする
+        next_execution = None
         test_case_id = request.GET.get("test_case_id")
+        if test_case_id:
+            _logger.debug(f"test_case_id specified: {test_case_id}")
+            try:
+                next_execution = test_session.executions.get(test_case__id=test_case_id)
+            except TestExecution.DoesNotExist:
+                pass
+        if not next_execution:
+            next_execution = test_session.get_next_execution()
 
+        if not next_execution:
+            if not test_session.completed_at:
+                test_session.complete()
+            return redirect("test_session_detail", pk=test_session.pk)
+
+        _logger.debug(f"******  {next_execution=}")
+        # TestSession詳細にリダイレクトしない場合、残ったTestExecutionに対する処理を進める
         # 現在のテストケースが何番目かを計算する
         current_execution_number = 1
         if test_case_id:
@@ -216,9 +302,11 @@ class TestSessionExecuteView(LoginRequiredMixin, View):
                     break
                 current_execution_number += 1
 
+        executions = test_session.executions.all()
         total_count = executions.count()
         completed_count = executions.exclude(status="NOT_TESTED").count()
         progress = (completed_count / total_count) * 100 if total_count > 0 else 0
+
         context = {
             "test_session": test_session,
             "total_count": total_count,
@@ -226,21 +314,6 @@ class TestSessionExecuteView(LoginRequiredMixin, View):
             "progress": progress,
             "current_execution_number": current_execution_number,
         }
-        next_execution = None
-        if test_case_id:
-            _logger.debug(f"test_case_id specified: {test_case_id}")
-            try:
-                next_execution = test_session.executions.get(test_case_id=test_case_id)
-            except TestExecution.DoesNotExist:
-                pass
-        if not next_execution:
-            next_execution = test_session.get_next_execution()
-
-        if not next_execution:
-            if not test_session.completed_at:
-                test_session.complete()
-            return redirect("test_session_detail", pk=test_session.pk)
-
         context["current_case"] = next_execution.test_case
         return render(request, self.template_name, context)
 
@@ -263,7 +336,7 @@ class TestSessionExecuteView(LoginRequiredMixin, View):
             )
 
         # テスト実行フォームからの送信の場合
-        execution = test_session.executions.get(test_case=test_case)
+        execution = test_session.executions.get(test_case__id=test_case.id)
         execution.status = request.POST["status"]
         execution.executed_by = test_session.executed_by
         execution.executed_at = timezone.now()
@@ -280,20 +353,7 @@ class TestSessionSkipAllView(LoginRequiredMixin, View):
 
     def post(self, request, pk):
         test_session = get_object_or_404(TestSession, pk=pk)
-
-        # 未実行のテストケースをスキップに変更
-        test_session.executions.filter(status="NOT_TESTED").update(
-            status="SKIPPED",
-            executed_by=test_session.executed_by,
-            executed_at=timezone.now(),
-            environment=test_session.environment,
-            notes="一括スキップ",
-        )
-
-        # テストセッションを完了状態に
-        if not test_session.completed_at:
-            test_session.complete()
-
+        test_session.skip_remainings()
         return redirect("test_session_detail", pk=pk)
 
 
@@ -352,11 +412,11 @@ class TestSuiteCreateView(TestEditorRequired, CreateView):
     template_name = "test_manager/suite_form.html"
 
     def form_valid(self, form):
-        form.instance.project = get_object_or_404(Project, pk=self.kwargs["project_pk"])
+        form.instance.project = get_object_or_404(Project, pk=self.kwargs["pk"])
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse_lazy("project_detail", kwargs={"pk": self.kwargs["project_pk"]})
+        return reverse_lazy("project_detail", kwargs={"pk": self.object.project.pk})
 
 
 class TestSuiteUpdateView(TestEditorRequired, UpdateView):
@@ -392,8 +452,13 @@ class TestSuiteDetailView(LoginRequiredMixin, DetailView):
         context["test_cases"] = self.object.test_cases.all()
 
         # テスト実行の結果を事前に計算
+        # Changed filter: sessions with executions of test cases in this suite
         recent_test_sessions = (
-            self.object.project.test_sessions.filter(available_suites=self.object)
+            TestSession.objects.filter(
+                project=self.object.project,
+                executions__test_case__suite=self.object
+            )
+            .distinct() # Avoid duplicates if a session has multiple cases from this suite
             .prefetch_related("executions")
             .order_by("-started_at")[:5]
         )
@@ -524,60 +589,6 @@ class TestStepListView(TestEditorRequired, View):
         return get_object_or_404(TestCase, pk=self.kwargs["case_pk"]).suite.project
 
 
-class UserListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
-    model = User
-    template_name = "test_manager/user_management/user_list.html"
-    context_object_name = "users"
-
-    def test_func(self):
-        return self.request.user.is_superuser
-
-    def get_queryset(self):
-        return User.objects.all().order_by("username")
-
-
-class UserUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
-    model = User
-    form_class = UserEditForm
-    template_name = "test_manager/user_management/user_form.html"
-    success_url = reverse_lazy("user_list")
-
-    def test_func(self):
-        return self.request.user.is_superuser
-
-    def form_valid(self, form):
-        messages.success(self.request, "ユーザー情報を更新しました。")
-        form.save()
-        return super().form_valid(form)
-
-
-class UserTokenManageView(LoginRequiredMixin, UserPassesTestMixin, View):
-    template_name = "test_manager/user_management/user_token.html"
-
-    def test_func(self):
-        return self.request.user.is_superuser
-
-    def get(self, request, *args, **kwargs):
-        user = get_object_or_404(User, pk=kwargs["pk"])
-        token, created = Token.objects.get_or_create(user=user)
-        if created:
-            messages.info(request, f"{user.username} のAPIトークンを新規発行しました。")
-        return render(
-            request, self.template_name, {"target_user": user, "token": token}
-        )
-
-    def post(self, request, *args, **kwargs):
-        user = get_object_or_404(User, pk=kwargs["pk"])
-        # Existing token, if any, will be deleted and a new one created by get_or_create
-        # To force re-generation, delete it first
-        Token.objects.filter(user=user).delete()
-        token = Token.objects.create(user=user)
-        messages.success(request, f"{user.username} のAPIトークンを再発行しました。")
-        return render(
-            request, self.template_name, {"target_user": user, "token": token}
-        )
-
-
 class TestCaseDetailView(LoginRequiredMixin, DetailView):
     model = TestCase
     template_name = "test_manager/case_detail.html"
@@ -636,9 +647,8 @@ class TestExecutionCreateView(TestExecutorRequired, CreateView):
         context = super().get_context_data(**kwargs)
         test_case = get_object_or_404(TestCase, pk=self.kwargs["case_pk"])
         context["test_case"] = test_case
-        context["test_sessions"] = test_case.suite.project.test_sessions.filter(
-            available_suites=test_case.suite, completed_at__isnull=True
-        )
+        # Changed filter: open sessions for the project
+        context["test_sessions"] = test_case.suite.project.test_sessions.filter(completed_at__isnull=True)
         return context
 
     def form_valid(self, form):

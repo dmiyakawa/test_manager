@@ -26,12 +26,6 @@
         環境: {{ test_session.environment }}
     </p>
     <p class="text-muted">
-        スイート:
-        {% for suite in test_session.available_suites.all %}
-            <a href="{% url 'suite_detail' suite.id %}">{{ suite.name }}</a>{% if not forloop.last %}, {% endif %}
-        {% endfor %}
-    </p>
-    <p class="text-muted">
         開始: {{ test_session.started_at|date:"Y/m/d H:i" }}
         {% if test_session.completed_at %}
         | 完了: {{ test_session.completed_at|date:"Y/m/d H:i" }}

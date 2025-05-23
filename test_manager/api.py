@@ -2,7 +2,7 @@ from rest_framework import generics, permissions
 from rest_framework import status
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from .models import Project, TestSuite, TestSession, TestExecution, TestCase
+from .models import Project, TestSuite, TestCase, TestSession, TestExecution
 from .serializers import (
     ProjectSerializer,
     TestSuiteSerializer,
@@ -11,7 +11,6 @@ from .serializers import (
 )
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 
 
@@ -40,38 +39,30 @@ class TestSessionList(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        project_id = self.kwargs["project_id"]
-        project = get_object_or_404(Project, pk=project_id)
+        # project_id must be part of the URL pattern for this view
+        project_id = self.kwargs.get("project_id") # Use .get for safety if URL might change
+        if not project_id:
+            # Handle error or return empty queryset if project_id is expected but not found
+            # This depends on how the URL is defined (e.g., /api/projects/<project_id>/sessions/)
+            # For now, assume project_id is guaranteed by URL routing.
+            # If this view is for /api/sessions/ (all sessions), then filtering by project_id here is wrong.
+            # Given the context, it's likely nested under a project.
+            project = get_object_or_404(Project, pk=project_id)
+            return TestSession.objects.filter(project=project).order_by("-started_at")
+        # If this view is not nested and should list all sessions user has access to,
+        # then queryset logic would be different.
+        # Assuming it's for a specific project based on original code.
+        project = get_object_or_404(Project, pk=self.kwargs["project_id"])
         return TestSession.objects.filter(project=project).order_by("-started_at")
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        project_id = self.kwargs["project_id"]
+
+    def perform_create(self, serializer):
+        # project_id must be part of the URL pattern for this view
+        project_id = self.kwargs.get("project_id")
         project = get_object_or_404(Project, pk=project_id)
-        test_session = serializer.save(
-            executed_by=request.user.username, project=project
-        )
-
-        available_suites_data = request.data.get("available_suites", [])
-        if (
-            not available_suites_data
-        ):  # If not provided, use all suites from the project
-            available_suites = TestSuite.objects.filter(project=project)
-        else:
-            available_suites = []
-            for suite_id in available_suites_data:
-                suite = get_object_or_404(
-                    TestSuite, pk=suite_id, project=project
-                )  # Ensure suite belongs to project
-                available_suites.append(suite)
-
-        test_session.available_suites.set(available_suites)
-        test_session.initialize_executions()
-
-        headers = self.get_success_headers(serializer.data)
-        return Response(
-            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        serializer.save(
+            executed_by=self.request.user.username,
+            project=project
         )
 
 

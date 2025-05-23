@@ -54,7 +54,7 @@ urlpatterns = [
     ),
     # テストスイート
     path(
-        "project/<int:project_pk>/suite/create/",
+        "project/<int:pk>/suite/create/",
         views.TestSuiteCreateView.as_view(),
         name="suite_create",
     ),
@@ -88,7 +88,7 @@ urlpatterns = [
         name="execution_create",
     ),
     path(
-        "project/<int:project_pk>/test-session/create/",
+        "project/<int:pk>/test-session/create/",
         views.TestSessionCreateView.as_view(),
         name="test_session_create",
     ),

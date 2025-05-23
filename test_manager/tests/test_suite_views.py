@@ -42,7 +42,7 @@ class TestSuiteViews:
             content_type=content_type, codename="edit_tests"
         )
         user.user_permissions.add(permission)
-        url = reverse("suite_create", kwargs={"project_pk": project.pk})
+        url = reverse("suite_create", kwargs={"pk": project.id})
         data = {"name": "New Suite", "description": "New Description"}
         response = client.post(url, data)
         assert response.status_code == 302
