@@ -75,21 +75,32 @@ def create_new_test_session(project_id: int, session_name: str = None) -> int:
 
     api_url = f"{DJANGO_API_BASE_URL}/api/projects/{project_id}/test-sessions/"
     headers = {"Authorization": f"Token {API_TOKEN}"}
-
+    json_data = {
+        "project": project_id,
+        "name": session_name,
+        "description": "Description",
+        "executed_by": "testuser",
+        "environment": "Test Env",
+    }
     try:
-        data = {
-            "project": project_id,
-            "name": session_name,
-            "description": "Description",
-            "executed_by": "testuser",
-            "environment": "Test Env",
-        }
-        response = requests.post(api_url, headers=headers, json=data, timeout=10)
-        # Raise HTTPError for bad responses (4xx or 5xx)
-        # response.raise_for_status()
+
+        response = requests.post(api_url, headers=headers, json=json_data, timeout=10)
         return response.json()
     except RuntimeError as e:
         return {"error": f"Failed to fetch projects: {str(e)}"}
+
+
+@mcp.tool()
+def mark_as_successful(test_session_id: int, test_case_id: int) -> int:
+    """指定したテストセッション中のテストケースが成功したと記録する"""
+    api_url = f"{DJANGO_API_BASE_URL}/api/test-sessions/{test_session_id}/execute/"
+    headers = {"Authorization": f"Token {API_TOKEN}"}
+    json_data = {
+        "test_case_id": test_case_id,
+        "status": "PASS",
+    }
+    try:
+        response = requests.post(api_url, headers=headers, json=json_data, timeout=10)
         return response.json()
     except RuntimeError as e:
         return {"error": f"Failed to fetch projects: {str(e)}"}
