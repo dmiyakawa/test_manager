@@ -287,7 +287,6 @@ class TestSessionExecuteView(LoginRequiredMixin, View):
                 test_session.complete()
             return redirect("test_session_detail", pk=test_session.pk)
 
-        _logger.debug(f"******  {next_execution=}")
         # TestSession詳細にリダイレクトしない場合、残ったTestExecutionに対する処理を進める
         # 現在のテストケースが何番目かを計算する
         current_execution_number = 1

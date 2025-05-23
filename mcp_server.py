@@ -5,7 +5,7 @@ import requests
 from mcp.server.fastmcp import FastMCP
 
 API_TOKEN = "db295f9804e905c3106fc68bab8c13e1c12777a7"
-DJANGO_API_BASE_URL = "http://localhost:8000"  # Consider making this an env variable
+DJANGO_API_BASE_URL = "http://localhost:8888"  # Consider making this an env variable
 
 logger = getLogger(__name__)
 handler = FileHandler("./mcp.log")
@@ -44,11 +44,25 @@ def get_test_sessions(project_id):
 
     try:
         response = requests.get(api_url, headers=headers, timeout=10)
-        # Raise HTTPError for bad responses (4xx or 5xx)
-        response.raise_for_status()
         return response.json()
     except RuntimeError as e:
         return {"error": f"Failed to fetch projects: {str(e)}"}
+
+
+@mcp.resource("tm://test_executions/{session_id}")
+def get_test_execution_detail(session_id: int):
+    """指定したテストセッションのテスト実行状況を取得する"""
+    logger.debug(f"get_test_execution_detail(session_id: {session_id})")
+
+    api_url = f"{DJANGO_API_BASE_URL}/api/test-sessions/{session_id}/execute/"
+    headers = {"Authorization": f"Token {API_TOKEN}"}
+
+    try:
+        response = requests.get(api_url, headers=headers, timeout=10)
+        return response.json()
+    except RuntimeError as e:
+        return {"error": f"Failed to fetch projects: {str(e)}"}
+
 
 
 @mcp.tool()

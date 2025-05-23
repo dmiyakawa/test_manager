@@ -55,7 +55,6 @@ class TestSessionList(generics.ListCreateAPIView):
         project = get_object_or_404(Project, pk=self.kwargs["project_id"])
         return TestSession.objects.filter(project=project).order_by("-started_at")
 
-
     def perform_create(self, serializer):
         # project_id must be part of the URL pattern for this view
         project_id = self.kwargs.get("project_id")

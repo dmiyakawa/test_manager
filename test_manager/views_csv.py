@@ -385,4 +385,4 @@ class CSVImportView(View):
         except ValueError as e:
             return HttpResponse(f"Import failed: {str(e)}", status=400)
         except Exception as e:
-            return HttpResponse(f"Import failed: Unexpected error occurred", status=400)
+            return HttpResponse(f"Import failed: Unexpected error occurred ({e})", status=400)
