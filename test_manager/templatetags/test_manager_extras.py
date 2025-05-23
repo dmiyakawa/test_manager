@@ -39,4 +39,4 @@ def filter_by(queryset, expr):
 
 @register.simple_tag
 def define(val=None):
-  return val
+    return val

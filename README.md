@@ -1,11 +1,9 @@
 # Test Manager Application
 
 Djangoベースのテスト管理用アプリケーションです。
-繰り返し同じテストケースを実行して継続的な品質管理をする際に使います。
 
-流行りのえーあいで9割くらい作りちらかしてます。
-
-このアプリケーションは、test_trackingアプリをtest_managerプロジェクトに統合したものです。
+ここで言う「テスト」とは、主に手動でWebブラウザ等を操作することでテスト対象となるWebアプリケーションが期待通りに動作するかを確認する作業を指します。
+継続的に品質管理をする上で、このTest Managerアプリのシナリオをソフトウェアリリース前に随時実装することを想定しています。
 
 
 ## 画面イメージ
@@ -71,7 +69,44 @@ uv run manage.py runserver
 uv run pytest
 ```
 
+## API
+
+#### 基本
+
+APIトークンを必須とする
+
+```bash
+curl -sS \
+    -H "Authorization: Token db295f9804e905c3106fc68bab8c13e1c12777a7" \
+    "http://localhost:8000/api/projects/3/testsuites/?include_cases=true"
+```
+
+
+#### OpenAPI 関連
+
+APIドキュメントの自動生成を目的に[drf-speculator](https://github.com/tfranzel/drf-spectacular/)を導入しています。
+
+* api/schema/ ... schema.yml をダウンロード
+* api/schema/swagger-ui/ ... Swagger UI
+* api/schema/redoc/ ... redoc UI
+
+```bash
+uv run manage.py spectacular --color --file schema.yml
+docker run -p 8080:8080 -e SWAGGER_JSON=/schema.yml -v ${PWD}/schema.yml:/schema.yml swaggerapi/swagger-ui
+```
+
 
 ## ライセンス
 
 このプロジェクトはMITライセンスの下で公開されています - 詳細は[LICENSE](LICENSE)ファイルを参照してください。
+
+### REST API
+- Project一覧APIを追加
+    - Django Rest Frameworkによる実装を `views.py` から `api.py` に分離しました。
+    - `urls.py` を更新し、`api.py` の `ProjectList` ビューを使用するようにしました。
+- API認証機能の追加
+    - Django REST Framework の `TokenAuthentication` を導入し、API呼び出しに認証トークンを必須としました。
+    - ユーザーは `/api/api-token-auth/` エンドポイントで認証情報を送信することでAPIトークンを取得できます。
+- ユーザー管理機能の追加
+    - 管理者向けにユーザー一覧、ユーザー情報（姓名）編集、APIトークン発行・再発行機能を持つ画面を追加しました。
+    - `/users/` からアクセス可能です。

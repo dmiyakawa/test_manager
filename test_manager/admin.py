@@ -13,7 +13,6 @@ class TestSessionAdmin(admin.ModelAdmin):
         "completed_at",
     )
     list_filter = ("project", "environment", "completed_at")
-    filter_horizontal = ("available_suites",)
     search_fields = ("name", "description", "executed_by")
 
 

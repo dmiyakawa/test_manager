@@ -36,10 +36,7 @@ class TestProjectViews:
     def test_project_create_view(self, client, user):
         client.login(username="testuser", password="testpass")
         url = reverse("project_create")
-        data = {
-            "name": "New Project",
-            "description": "New Description"
-        }
+        data = {"name": "New Project", "description": "New Description"}
         response = client.post(url, data)
         assert response.status_code == 302
         assert Project.objects.filter(name="New Project").exists()
@@ -55,13 +52,12 @@ class TestProjectViews:
     def test_project_update_view(self, client, user, project):
         client.login(username="testuser", password="testpass")
         content_type = ContentType.objects.get_for_model(Project)
-        permission = Permission.objects.get(content_type=content_type, codename='manage_project')
+        permission = Permission.objects.get(
+            content_type=content_type, codename="manage_project"
+        )
         user.user_permissions.add(permission)
         url = reverse("project_update", kwargs={"pk": project.pk})
-        data = {
-            "name": "Updated Project",
-            "description": "Updated Description"
-        }
+        data = {"name": "Updated Project", "description": "Updated Description"}
         response = client.post(url, data)
         assert response.status_code == 302
         project.refresh_from_db()

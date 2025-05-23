@@ -1,0 +1,36 @@
+{% extends "test_manager/base.html" %}
+
+{% block title %}ユーザー管理{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>ユーザー管理</h2>
+    <table class="table table-striped mt-3">
+        <thead>
+            <tr>
+                <th>ユーザー名</th>
+                <th>姓</th>
+                <th>名</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user_obj in users %}
+            <tr>
+                <td>{{ user_obj.username }}</td>
+                <td>{{ user_obj.last_name|default:"" }}</td>
+                <td>{{ user_obj.first_name|default:"" }}</td>
+                <td>
+                    <a href="{% url 'user_update' user_obj.pk %}" class="btn btn-sm btn-outline-primary">編集</a>
+                    <a href="{% url 'user_token_manage' user_obj.pk %}" class="btn btn-sm btn-outline-info">APIトークン</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4">ユーザーが存在しません。</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

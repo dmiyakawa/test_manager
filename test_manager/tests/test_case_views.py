@@ -25,9 +25,7 @@ class TestCaseViews:
     @pytest.fixture
     def suite(self, project):
         return TestSuite.objects.create(
-            project=project,
-            name="Test Suite",
-            description="Test Description"
+            project=project, name="Test Suite", description="Test Description"
         )
 
     @pytest.fixture
@@ -38,7 +36,7 @@ class TestCaseViews:
             description="Test Description",
             prerequisites="Test Prerequisites",
             status="DRAFT",
-            priority="MEDIUM"
+            priority="MEDIUM",
         )
 
     def test_case_list_view(self, client, user, case):
@@ -62,7 +60,7 @@ class TestCaseViews:
             project=case.suite.project,
             name="Test Session",
             executed_by=user,
-            environment="Test Environment"
+            environment="Test Environment",
         )
         execution = TestExecution.objects.create(
             test_session=test_session,
@@ -71,7 +69,7 @@ class TestCaseViews:
             environment="Test Environment",
             status="PASS",
             result_detail="Test Result",
-            notes="Test Notes"
+            notes="Test Notes",
         )
         url = reverse("case_detail", kwargs={"pk": case.pk})
         response = client.get(url)
@@ -97,15 +95,15 @@ class TestCaseCreateUpdateViews:
     @pytest.fixture
     def suite(self, project):
         return TestSuite.objects.create(
-            project=project,
-            name="Test Suite",
-            description="Test Description"
+            project=project, name="Test Suite", description="Test Description"
         )
 
     def test_case_create_view(self, client, user, suite):
         client.login(username="testuser", password="testpass")
         content_type = ContentType.objects.get_for_model(Project)
-        permission = Permission.objects.get(content_type=content_type, codename='edit_tests')
+        permission = Permission.objects.get(
+            content_type=content_type, codename="edit_tests"
+        )
         user.user_permissions.add(permission)
         url = reverse("case_create", kwargs={"suite_pk": suite.pk})
         data = {
@@ -120,7 +118,7 @@ class TestCaseCreateUpdateViews:
             "steps-MAX_NUM_FORMS": "1000",
             "steps-0-description": "Test Step",
             "steps-0-expected_result": "Expected Result",
-            "steps-0-order": "0"
+            "steps-0-order": "0",
         }
         response = client.post(url, data)
         assert response.status_code == 302
@@ -129,18 +127,20 @@ class TestCaseCreateUpdateViews:
     def test_case_update_view(self, client, user, suite):
         client.login(username="testuser", password="testpass")
         content_type = ContentType.objects.get_for_model(Project)
-        permission = Permission.objects.get(content_type=content_type, codename='edit_tests')
+        permission = Permission.objects.get(
+            content_type=content_type, codename="edit_tests"
+        )
         user.user_permissions.add(permission)
-        
+
         case = TestCase.objects.create(
             suite=suite,
             title="Test Case",
             description="Test Description",
             prerequisites="Test Prerequisites",
             status="DRAFT",
-            priority="MEDIUM"
+            priority="MEDIUM",
         )
-        
+
         url = reverse("case_update", kwargs={"pk": case.pk})
         data = {
             "title": "Updated Test Case",
@@ -151,7 +151,7 @@ class TestCaseCreateUpdateViews:
             "steps-TOTAL_FORMS": "0",
             "steps-INITIAL_FORMS": "0",
             "steps-MIN_NUM_FORMS": "0",
-            "steps-MAX_NUM_FORMS": "1000"
+            "steps-MAX_NUM_FORMS": "1000",
         }
         response = client.post(url, data)
         assert response.status_code == 302

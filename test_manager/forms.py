@@ -1,9 +1,12 @@
+from logging import getLogger
 from django import forms
 from django.contrib.auth import get_user_model
 from django.forms import inlineformset_factory
-from .models import Project, TestSuite, TestCase, TestStep
+from .models import Project, TestSuite, TestCase, TestStep, TestSession
 
 User = get_user_model()
+
+_logger = getLogger("model")
 
 
 class ProjectForm(forms.ModelForm):
@@ -51,9 +54,38 @@ TestStepFormSet = inlineformset_factory(
 )
 TestStepFormSet.__test__ = False
 
+
 class TestCaseForm(forms.ModelForm):
     __test__ = False
 
     class Meta:
         model = TestCase
         fields = ["title", "description", "prerequisites", "status", "priority"]
+
+
+class UserEditForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name"]
+
+
+class TestSessionForm(forms.ModelForm):
+    selected_cases = forms.ModelMultipleChoiceField(
+        queryset=TestCase.objects.none(),
+        widget=forms.CheckboxSelectMultiple,
+        required=True,
+        label="テストケースを選択"
+    )
+
+    class Meta:
+        model = TestSession
+        fields = ['name', 'description', 'environment', 'selected_cases']
+
+    def __init__(self, *args, **kwargs):
+        project = kwargs.get('initial', {}).get('project')
+        super().__init__(*args, **kwargs)
+        if project:
+            self.fields['selected_cases'].queryset = TestCase.objects.filter(suite__project=project).order_by('suite__name', 'title')
+        else:
+            self.fields['selected_cases'].queryset = TestCase.objects.none()
+            self.fields['selected_cases'].disabled = True
