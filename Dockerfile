@@ -1,5 +1,5 @@
 # Build stage
-FROM python:3.13-slim as builder
+FROM python:3.14-slim as builder
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.t
 RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels gunicorn
 
 # Final stage
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser
